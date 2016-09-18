@@ -1,0 +1,14 @@
+* Extra program
+    + Tesseract-ocr
+* Python module
+    + urllib
+    + urllib2
+    + re
+    + cookielib
+    + beautifulsoup4
+    + pytesseract
+    + PyQt
+    + PIL
+    + json
+    + requests
+    +
