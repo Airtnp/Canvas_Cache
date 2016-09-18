@@ -20,8 +20,10 @@ Cache slow Canvas
 * Download 
 
 ## TODO
-[.] Write a GUI for it (PyQt)
-[.] Improve downloading
+* [.] Write a GUI for it (PyQt)
+* [.] Improve downloading
+* [.] Connect to MySQL
+* [.] Use more accurate OCR
 
 ## License
 * MIT
