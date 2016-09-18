@@ -8,6 +8,7 @@ Cache slow Canvas
 * Use urllib/urllib2/cookielib to situmulate login
 * Use bs4 to parse html
 * Use tesseract-ocr+PIL to recognize captcha
+* Use pymysql to connect MySQL database
 * I firstly want to write different class for different function, but failed, so the class just mean JaccountLogin and CanvasCache
 
 ## Usage
