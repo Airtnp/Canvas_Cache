@@ -22,11 +22,11 @@ Cache slow Canvas
 ## TODO
 * [.] Write a GUI for it (PyQt)
 * [.] Improve downloading
-* [.] Connect to MySQL
 * [.] Use more accurate OCR
+* [.] Use database record to improve file downloading
 
 ## License
-* MIT
+* Do whatever you want
 
 ## Orz
 * orz LukeXuan

@@ -7,6 +7,7 @@ import re
 import requests
 import traceback
 import json
+import os
 from bs4 import BeautifulSoup
 from pytesseract import image_to_string
 from time import sleep
@@ -14,7 +15,7 @@ from random import randint
 from PIL import Image
 from ssl import SSLError
 from LoginTimeout import TimeoutThread, TimeLimitExpired
-import os
+from SQLOperation import CanvasDataBase
 
 host_url = 'https://sjtu-umich.instructure.com/'
 # host_url = 'http://my2015.sjtu.edu.cn/App/CanvasKnowledgeBase/Load'
@@ -22,7 +23,7 @@ post_url = 'https://jaccount.sjtu.edu.cn/jaccount/ulogin'
 
 
 class JaccountLogin:
-    def __init__(self, usr, pw, timeout, threshold=140, captcha=False):
+    def __init__(self, usr, pw, timeout, threshold=140, captcha=False, host='localhost', host_user='root', host_pw=''):
         self.user = usr
         self.pw = pw
         self.timeout = timeout
@@ -62,6 +63,9 @@ class JaccountLogin:
         self.fl_path = 'File'
         self.ban_sites = ['2015 Fall Entry', 'Current Students']
 
+        self.cdb = CanvasDataBase(host, host_user, host_pw, self.user)
+        self.cdb.init_db()
+
     def get_captcha(self):
         # 效果辣鸡..
         im = Image.open('captcha.jpg')
@@ -91,8 +95,8 @@ class JaccountLogin:
 
     def get_file(self, params):
         try:
-            print 'url=' + params['url']
-            print 'title=' + params['title']
+            print '\turl = ' + params['url']
+            print '\ttitle = ' + params['title']
             url = params['url']
             title = params['title']
             content = self.opener.open(url, timeout=self.timeout)
@@ -105,17 +109,17 @@ class JaccountLogin:
             print traceback.print_exc()
             return False
 
-    def get_soup(self):
+    def get_login_soup(self):
         soup = None
         try:
             h = urllib2.urlopen(host_url, timeout=self.timeout)
             soup = BeautifulSoup(h, 'html.parser')
         except urllib2.URLError:
             print 'URL Timeout error'
-            soup = self.get_soup()
+            soup = self.get_login_soup()
         except SSLError:
             print 'SSL handshake error'
-            soup = self.get_soup()
+            soup = self.get_login_soup()
         except Exception as e:
             print e
             print traceback.print_exc()
@@ -123,7 +127,7 @@ class JaccountLogin:
 
     def check_login(self):
         print "\n---Begin Check Login---"
-        soup = self.get_soup()
+        soup = self.get_login_soup()
         print "---End Check Login---"
         if soup:
             if soup.title.string.find('Sign') != -1:
@@ -137,7 +141,7 @@ class JaccountLogin:
         print "\n---Begin Login---"
         try:
             if not soup:
-                soup = self.get_soup()
+                soup = self.get_login_soup()
             # h = urllib2.urlopen(host_url, timeout=self.timeout)
             # soup = BeautifulSoup(h, 'html.parser')
             # h = rs.get(host_url)
@@ -251,12 +255,25 @@ class JaccountLogin:
                 assignments = assignment_data['assignments']
                 self.course_assign[self.course_title[i]] = []
                 ad = {}
+
                 properties = ['id', 'due_at', 'unlock_at', 'updated_at', 'created_at', 'name', 'html_url']
                 for assignment in assignments:
+                    db_list = [0, 0, 0, 0, 0, 0, 0]
                     for p in properties:
                         if p in assignment.keys():
                             aid = assignment[p]
                             ad[p] = aid
+                        else:
+                            ad[p] = 'NULL'
+
+                    db_list[0] = ad['id']  # ID
+                    db_list[1] = self.course_title[i]  # COURSE
+                    db_list[2] = ad['name']  # Name
+                    db_list[3] = ad['created_at']
+                    db_list[4] = ad['updated_at']
+                    db_list[5] = ad['due_at']
+                    db_list[6] = ad['unlock_at']
+                    print db_list
 
                     assign_data = urllib2.urlopen(ad['html_url'])
                     soup = BeautifulSoup(assign_data)
@@ -275,12 +292,14 @@ class JaccountLogin:
                         try:
                             TimeoutThread(self.timeout, self.get_file, fl)
                         except TimeLimitExpired:
+                            print fl['title']
                             print 'Download fail for first time, try second time'
                             try:
                                 TimeoutThread(self.timeout, self.get_file, fl)
                             except TimeLimitExpired:
+                                print fl['title']
                                 print 'Download fail!'
-                    print ad
+                    self.cdb.op_assignment(db_list)
                     self.course_assign[self.course_title[i]].append(ad)
                 print "\t-End Assignments for " + self.course_title[i] + '-'
             print "---End Fetching Assignments---"
@@ -308,6 +327,24 @@ class JaccountLogin:
                 for fp in file_properties:
                     if fp in file_data.keys():
                         r_file[fp] = file_data[fp]
+                    else:
+                        r_file[fp] = 'null'
+
+                db_list = [0]*13
+                db_list[0] = r_file['id']
+                db_list[1] = path_prefix.split('/')[1] # Courses
+                db_list[2] = r_file['filename']
+                db_list[3] = r_file['content-type']
+                db_list[4] = r_file['size']
+                db_list[5] = r_file['folder_id']
+                db_list[6] = path_prefix #Path
+                db_list[7] = r_file['created_at']
+                db_list[8] = r_file['updated_at']
+                db_list[9] = r_file['modified_at']
+                db_list[10] = r_file['unlock_at']
+                db_list[11] = r_file['url']
+                db_list[12] = 'success'
+
                 t_files.append(r_file)
                 fl = {}
                 fl['url'] = r_file['url']
@@ -322,6 +359,8 @@ class JaccountLogin:
                     except TimeLimitExpired:
                         print fl['title']
                         print 'Download fail!'
+                        db_list[12] = 'failed'
+                self.cdb.op_file(db_list)
         return t_files
 
     def get_folder(self, fid, path_prefix):
@@ -414,12 +453,13 @@ class JaccountLogin:
 
 
 if __name__ == '__main__':
-    jl = JaccountLogin('username', 'passwd', 10, 70, True)
+    jl = JaccountLogin('username', 'password', 10, 70, True)
     # print urllib2.urlopen('https://sjtu-umich.instructure.com/', timeout=10).read()
     xsoup, xres = jl.check_login()
     if not xres:
         jl.login(xsoup)
     jl.get_courses()
+    # jl.get_assignments()
     jl.get_attachments()
 
 
