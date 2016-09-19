@@ -1,5 +1,6 @@
 * Extra program
     + Tesseract-ocr
+    + MySQL
 * Python module
     + urllib
     + urllib2
@@ -11,4 +12,4 @@
     + PIL
     + json
     + requests
-    +
+    + pymysql

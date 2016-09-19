@@ -104,6 +104,12 @@ class JaccountLogin:
             f.write(content.read())
             f.close()
             return True
+        except urllib2.URLError:
+            print 'URL Timeout error'
+            return False
+        except SSLError:
+            print 'SSL handshake error'
+            return False
         except Exception as e:
             print e
             print traceback.print_exc()
@@ -273,7 +279,6 @@ class JaccountLogin:
                     db_list[4] = ad['updated_at']
                     db_list[5] = ad['due_at']
                     db_list[6] = ad['unlock_at']
-                    print db_list
 
                     assign_data = urllib2.urlopen(ad['html_url'])
                     soup = BeautifulSoup(assign_data)
@@ -349,17 +354,20 @@ class JaccountLogin:
                 fl = {}
                 fl['url'] = r_file['url']
                 fl['title'] = path_prefix + '/' + r_file['filename']
-                try:
-                    TimeoutThread(self.timeout, self.get_file, fl)
-                except TimeLimitExpired:
-                    print fl['title']
-                    print 'Download fail for first time, try second time'
+                download_status = self.cdb.check_file_download(db_list)
+                # print download_status
+                if download_status != 'success':
                     try:
                         TimeoutThread(self.timeout, self.get_file, fl)
                     except TimeLimitExpired:
                         print fl['title']
-                        print 'Download fail!'
-                        db_list[12] = 'failed'
+                        print 'Download fail for first time, try second time'
+                        try:
+                            TimeoutThread(self.timeout, self.get_file, fl)
+                        except TimeLimitExpired:
+                            print fl['title']
+                            print 'Download fail!'
+                            db_list[12] = 'failed'
                 self.cdb.op_file(db_list)
         return t_files
 
@@ -453,6 +461,8 @@ class JaccountLogin:
 
 
 if __name__ == '__main__':
+    # Seen from tieba
+    # jl = JaccountLogin('SJTUwbl', '199509091014wbl', 100, 70)
     jl = JaccountLogin('username', 'password', 10, 70, True)
     # print urllib2.urlopen('https://sjtu-umich.instructure.com/', timeout=10).read()
     xsoup, xres = jl.check_login()

@@ -10,7 +10,6 @@ class CanvasDataBase:
         self.conn = pymysql.connect(host=self.host, user=self.user, passwd=self.pwd, port=3306, charset='utf8')
         self.cur = self.conn.cursor()
         self.db_name = 'Canvas_'+self.name
-        self.drop_db()
 
     def __del__(self):
         self.cur.close()
@@ -109,11 +108,22 @@ class CanvasDataBase:
         update_query = \
         '''
         update Files
-                set updated_at = '{}', modified_at = '{}'
+                set updated_at = '{}', modified_at = '{}', download_status = '{}'
             where id = {}
-        '''.format(params[8], params[9], params[0])
+        '''.format(params[8], params[9], params[12], params[0])
         self.cur.execute(update_query)
         self.conn.commit()
+
+    def check_file_download(self, params):
+        fid = params[0]
+        check_query = \
+        '''
+        select * from files where id = {}
+        '''.format(str(fid))
+        length = self.cur.execute(check_query)
+        for content in self.cur:
+            return content[-1]
+        return 'failed'
 
     def op_file(self, params):
         fid = params[0]
@@ -125,12 +135,12 @@ class CanvasDataBase:
         for content in self.cur:
             if content:
                 self.update_file(params)
-                break
+                return
         self.insert_file(params)
 
 
 if __name__ == '__main__':
     cdb = CanvasDataBase('localhost', 'root', '')
-    cdb.init_db()
+    cdb.drop_db()
     # cdb.op_assignment([str(39), 'VE203, Discrete Mathematics', 'Assignment 1', '2016-09-07T07:05:19Z', '2016-209-14T07:46:05Z', '2016-092-22T08:00:00Z', '2016-09-211T16:00:00Z'])
 
