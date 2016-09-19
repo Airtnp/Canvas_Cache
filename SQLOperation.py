@@ -89,7 +89,7 @@ class CanvasDataBase:
         for content in self.cur:
             if content:
                 self.update_assignment(params)
-                break
+                return
         self.insert_assignment(params)
 
     def insert_file(self, params):

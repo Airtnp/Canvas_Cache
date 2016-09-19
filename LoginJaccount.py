@@ -8,6 +8,7 @@ import requests
 import traceback
 import json
 import os
+import sys
 from bs4 import BeautifulSoup
 from pytesseract import image_to_string
 from time import sleep
@@ -62,9 +63,10 @@ class JaccountLogin:
         self.hw_path = 'Homework'
         self.fl_path = 'File'
         self.ban_sites = ['2015 Fall Entry', 'Current Students']
-
+        # self.ban_sites = []
+        self.refresh_files = 0
         self.cdb = CanvasDataBase(host, host_user, host_pw, self.user)
-        self.cdb.init_db()
+        # self.cdb.init_db()
 
     def get_captcha(self):
         # 效果辣鸡..
@@ -95,10 +97,12 @@ class JaccountLogin:
 
     def get_file(self, params):
         try:
-            print '\turl = ' + params['url']
-            print '\ttitle = ' + params['title']
+            print '\t\turl = ' + params['url']
             url = params['url']
             title = params['title']
+            # t_type = sys.getdefaultencoding()
+            # title = title.decode('utf-8').encode(t_type)
+            print '\t\ttitle = ' + title
             content = self.opener.open(url, timeout=self.timeout)
             f = open(title, 'wb')
             f.write(content.read())
@@ -143,7 +147,7 @@ class JaccountLogin:
                 return soup, True
         return soup, False
 
-    def login(self, soup=None):
+    def login(self, soup=None, ui_params=None):
         print "\n---Begin Login---"
         try:
             if not soup:
@@ -176,13 +180,34 @@ class JaccountLogin:
             # f.write(captcha_pic.content)
             f.write(captcha_pic.read())
             f.close()
+            '''
+            if ui_params:
+                captcha_view = ui_params['window'].graphicsView
+                captcha_scene = ui_params['window'].scene
+                captcha_pict = ui_params['window'].captcha
+                captcha_pict.load('captcha.jpg')
+                captcha_item = ui_params['window'].captcha_item
+                captcha_item.setPixmap(captcha_pict)
+                captcha_scene.addItem(captcha_item)
+                captcha_view.setScene(captcha_scene)
+                captcha_view.update()
+                captcha_view.show()
+            '''
 
             if self.check_captcha:
                 self.posts['captcha'] = self.get_captcha()
             else:
-                self.get_captcha()
-                self.posts['captcha'] = raw_input('Enter your captcha: ').replace('\n', '')
+                if ui_params:
+                    captcha_widget = ui_params['window'].lineEdit_3
+                    captcha_signal = ui_params['window'].login_signal
+                    while not captcha_signal:
+                        captcha_signal = ui_params['window'].login_signal
+                    captcha = captcha_widget.text()
+                    self.posts['captcha'] = captcha
 
+                else:
+                    self.posts['captcha'] = raw_input('Enter your captcha: ')
+            self.posts['captcha'] = self.posts['captcha'].replace('\n', '')
             # print self.posts
             post_data = urllib.urlencode(self.posts)
             request = urllib2.Request(post_url, post_data, self.headers)
@@ -253,7 +278,7 @@ class JaccountLogin:
                 self.make_dir(self.hw_path+'/'+self.course_title[i])
                 course_url = host_url+'api/v1/'+self.course_url[i]+'/assignment_groups'+'?'+suffix_url
                 req = urllib2.Request(course_url)
-                response = self.opener.open(req)
+                response = self.opener.open(req, timeout=self.timeout)
                 # print BeautifulSoup(response).prettify()
                 json_data = response.read()
                 json_data = re.findall('\[(\{.*\})\]', json_data)
@@ -313,100 +338,111 @@ class JaccountLogin:
             print traceback.print_exc()
 
     def get_folder_files(self, fid, path_prefix):
-        self.make_dir(path_prefix)
-        fid = str(fid)
-        file_url = host_url + 'api/v1/folders/' + fid + '/files'
-        req = urllib2.Request(file_url)
-        response = self.opener.open(req)
-        json_data = response.read()
-        json_data = re.findall(';\[(\{.*\})\]', json_data)
-        t_files = []
-        file_properties = ['id', 'folder_id', 'filename', 'content-type', 'url', 'size',
-                           'created_at', 'updated_at', 'unlock_at', 'modified_at']
-        if json_data:
-            json_data = json_data[0]
-            files = re.findall('(\{.*?\})', json_data)
-            for xfile in files:
-                r_file = {}
-                file_data = self.get_json(xfile)
-                for fp in file_properties:
-                    if fp in file_data.keys():
-                        r_file[fp] = file_data[fp]
-                    else:
-                        r_file[fp] = 'null'
+        try:
+            self.make_dir(path_prefix)
+            fid = str(fid)
+            file_url = host_url + 'api/v1/folders/' + fid + '/files'
+            req = urllib2.Request(file_url)
+            response = self.opener.open(req, timeout=self.timeout)
+            json_data = response.read()
+            json_data = re.findall(';\[(\{.*\})\]', json_data)
+            t_files = []
+            file_properties = ['id', 'folder_id', 'display_name', 'filename', 'content-type', 'url', 'size',
+                               'created_at', 'updated_at', 'unlock_at', 'modified_at']
+            if json_data:
+                json_data = json_data[0]
+                files = re.findall('(\{.*?\})', json_data)
+                for xfile in files:
+                    r_file = {}
+                    file_data = self.get_json(xfile)
+                    for fp in file_properties:
+                        if fp in file_data.keys():
+                            r_file[fp] = file_data[fp]
+                        else:
+                            r_file[fp] = 'null'
 
-                db_list = [0]*13
-                db_list[0] = r_file['id']
-                db_list[1] = path_prefix.split('/')[1] # Courses
-                db_list[2] = r_file['filename']
-                db_list[3] = r_file['content-type']
-                db_list[4] = r_file['size']
-                db_list[5] = r_file['folder_id']
-                db_list[6] = path_prefix #Path
-                db_list[7] = r_file['created_at']
-                db_list[8] = r_file['updated_at']
-                db_list[9] = r_file['modified_at']
-                db_list[10] = r_file['unlock_at']
-                db_list[11] = r_file['url']
-                db_list[12] = 'success'
+                    db_list = [0]*13
+                    db_list[0] = r_file['id']
+                    db_list[1] = path_prefix.split('/')[1] # Courses
+                    db_list[2] = r_file['display_name']
+                    db_list[3] = r_file['content-type']
+                    db_list[4] = r_file['size']
+                    db_list[5] = r_file['folder_id']
+                    db_list[6] = path_prefix #Path
+                    db_list[7] = r_file['created_at']
+                    db_list[8] = r_file['updated_at']
+                    db_list[9] = r_file['modified_at']
+                    db_list[10] = r_file['unlock_at']
+                    db_list[11] = r_file['url']
+                    db_list[12] = 'success'
 
-                t_files.append(r_file)
-                fl = {}
-                fl['url'] = r_file['url']
-                fl['title'] = path_prefix + '/' + r_file['filename']
-                download_status = self.cdb.check_file_download(db_list)
-                # print download_status
-                if download_status != 'success':
-                    try:
-                        TimeoutThread(self.timeout, self.get_file, fl)
-                    except TimeLimitExpired:
-                        print fl['title']
-                        print 'Download fail for first time, try second time'
+                    t_files.append(r_file)
+                    fl = {}
+                    fl['url'] = r_file['url']
+                    fl['title'] = path_prefix + '/' + r_file['display_name']
+                    download_status = self.cdb.check_file_download(db_list)
+                    # print download_status
+                    # self.refresh_files = 1
+                    if download_status != 'success' or self.refresh_files == 1:
                         try:
                             TimeoutThread(self.timeout, self.get_file, fl)
                         except TimeLimitExpired:
                             print fl['title']
-                            print 'Download fail!'
+                            print 'Download fail for first time, try second time'
+                            try:
+                                TimeoutThread(self.timeout, self.get_file, fl)
+                            except TimeLimitExpired:
+                                print fl['title']
+                                print 'Download fail!'
+                                db_list[12] = 'failed'
+                        except Exception as e:
                             db_list[12] = 'failed'
-                self.cdb.op_file(db_list)
+                    self.cdb.op_file(db_list)
+        except Exception as e:
+            print e
+            t_files = []
         return t_files
 
     def get_folder(self, fid, path_prefix):
-        fid = str(fid)
-        folder_url = host_url + 'api/v1/folders/' + fid + '/folders'
-        req = urllib2.Request(folder_url)
-        response = self.opener.open(req)
-        json_data = response.read()
-        json_data = re.findall(';\[(\{.*\})\]', json_data)
-        t_folder = []
-        folder_properties = ['folder_url', 'folders_counter', 'name', 'id', 'context_id',
-                             'updated_at', 'created_at', 'parent_folder_id']
-        file_properties = ['files_url', 'files_count']
-
-        if json_data:
-            json_data = json_data[0]
-            folders = re.findall('(\{.*?\})', json_data)
-            for xfolder in folders:
+        try:
+            fid = str(fid)
+            folder_url = host_url + 'api/v1/folders/' + fid + '/folders'
+            req = urllib2.Request(folder_url)
+            response = self.opener.open(req, timeout=self.timeout)
+            json_data = response.read()
+            json_data = re.findall(';\[(\{.*\})\]', json_data)
+            t_folder = []
+            folder_properties = ['folder_url', 'folders_counter', 'name', 'id', 'context_id',
+                                 'updated_at', 'created_at', 'parent_folder_id']
+            file_properties = ['files_url', 'files_count']
+            if json_data:
+                json_data = json_data[0]
+                folders = re.findall('(\{.*?\})', json_data)
+                for xfolder in folders:
+                    a_folder = {}
+                    a_file = {}
+                    folder_data = self.get_json(xfolder)
+                    for fp in folder_properties:
+                        if fp in folder_data.keys():
+                            a_folder[fp] = folder_data[fp]
+                    for fp in file_properties:
+                        if fp in folder_data.keys():
+                            a_file[fp] = folder_data[fp]
+                    a_file['files_detail'] = self.get_folder_files(fid, path_prefix)
+                    a_folder['file'] = a_file
+                    print('\n\t\tFolder-'+a_folder['name'])
+                    a_folder['child_folder'] = self.get_folder(a_folder['id'], path_prefix+'/'+a_folder['name'])
+                    t_folder.append(a_folder)
+            else:
                 a_folder = {}
                 a_file = {}
-                folder_data = self.get_json(xfolder)
-                for fp in folder_properties:
-                    if fp in folder_data.keys():
-                        a_folder[fp] = folder_data[fp]
-                for fp in file_properties:
-                    if fp in folder_data.keys():
-                        a_file[fp] = folder_data[fp]
                 a_file['files_detail'] = self.get_folder_files(fid, path_prefix)
                 a_folder['file'] = a_file
-                a_folder['child_folder'] = self.get_folder(a_folder['id'], path_prefix+'/'+a_folder['name'])
                 t_folder.append(a_folder)
-        else:
-            a_folder = {}
-            a_file = {}
-            a_file['files_detail'] = self.get_folder_files(fid, path_prefix)
-            a_folder['file'] = a_file
-            t_folder.append(a_folder)
-            return t_folder
+        except Exception as e:
+            print e
+            t_folder = []
+        return t_folder
 
     def get_attachments(self):
         '''
@@ -433,7 +469,7 @@ class JaccountLogin:
                 self.make_dir(self.fl_path+'/'+self.course_title[i])
                 root_url = host_url+'api/v1/'+self.course_url[i]+'/folders/root'
                 req = urllib2.Request(root_url)
-                response = self.opener.open(req)
+                response = self.opener.open(req, timeout=self.timeout)
                 # print BeautifulSoup(response).prettify()
                 json_data = response.read()
                 json_data = re.findall(';(\{.*\})', json_data)
@@ -450,6 +486,7 @@ class JaccountLogin:
                 for fp in file_properties:
                     if fp in file_data.keys():
                         a_file[fp] = file_data[fp]
+                a_file['files_detail'] = self.get_folder_files(a_folder['id'], self.fl_path + '/' + self.course_title[i])
                 a_folder['file'] = a_file
                 a_folder['child_folder'] = self.get_folder(a_folder['id'], self.fl_path + '/' + self.course_title[i])
                 self.course_attach[self.course_title[i]]['root'] = a_folder
@@ -461,8 +498,6 @@ class JaccountLogin:
 
 
 if __name__ == '__main__':
-    # Seen from tieba
-    # jl = JaccountLogin('SJTUwbl', '199509091014wbl', 100, 70)
     jl = JaccountLogin('username', 'password', 10, 70, True)
     # print urllib2.urlopen('https://sjtu-umich.instructure.com/', timeout=10).read()
     xsoup, xres = jl.check_login()

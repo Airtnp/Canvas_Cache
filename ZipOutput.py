@@ -1,4 +1,3 @@
-# copy from csdn
 import os,sys
 import zipfile
 
