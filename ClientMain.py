@@ -4,12 +4,15 @@ from LoginTimeout import TimeoutThread
 import Interfaces.ClientInterface as ClientInterface
 import Interfaces.ClientMessageBox as ClientMessageBox
 import Interfaces.ClientWidget as ClientWidget
+import Interfaces.ClientLog as ClientLogWindow
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
 import traceback
 import sys
 import locale
+import time
+import threading
 
 try:
     _fromUtf8 = QString.fromUtf8
@@ -19,14 +22,22 @@ except AttributeError:
 
 '''
 Need to add:
-1. Dialog for log
+1. Dialog for log (completing require 8)
 2. thread for logining
 3. check pw and usr
 4. table for assignments & files & announcements
 5. Announcements + Discussion
 6. https://canvas.instructure.com/doc/api/discussion_topics.html
 7. https://canvas.instructure.com/doc/api/announcements.html
+8. Use thread to seperate UI and running function
 '''
+
+
+class ClientLog(QDialog, ClientLogWindow.Ui_Dialog):
+    def __init__(self, parent=None):
+        super(ClientLog, self).__init__(parent)
+        self.setupUi(self)
+        self.setFixedSize(self.width(), self.height())
 
 
 class ClientMainWindow(QMainWindow, ClientInterface.Ui_MainWindow):
@@ -40,14 +51,25 @@ class ClientMainWindow(QMainWindow, ClientInterface.Ui_MainWindow):
         self.captcha = None
         self.captcha_item = None
         self.scene = None
+        # ClientWidget.OutputProcessMain()
         self.init_widgets()
+        # self.log = ClientLog()
+        # self.log.show()
 
     def init_widgets(self):
         self.set_status('Log out')
-        # sys.stdout = ClientWidget.OutLog(self.textBrowser, sys.stdout)
-        # sys.stderr = ClientWidget.OutLog(self.textBrowser, sys.stderr, QColor(255, 0, 0))
         self.lineEdit_2.setEchoMode(QLineEdit.Password)
         self.pushButton.clicked.connect(lambda: self.login())
+
+        # sys.stdout = ClientWidget.OutLog(self.log.textEdit, sys.stdout)
+        # sys.stderr = ClientWidget.OutLog(self.log.textEdit, sys.stderr, QColor(255, 0, 0))
+
+        # sys.stdout = ClientWidget.ClientLogStream(textWritten=self.write_output)
+        # sys.stderr = ClientWidget.ClientLogStream(textWritten=self.write_output)
+
+
+
+
         '''
         self.captcha = QImage()
         self.captcha_item = QGraphicsPixmapItem()
@@ -62,6 +84,21 @@ class ClientMainWindow(QMainWindow, ClientInterface.Ui_MainWindow):
         self.graphicsView.show()
         '''
 
+    @staticmethod
+    def update_output(self):
+        while True:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            time.sleep(1)
+
+    def write_output(self, text):
+        QApplication.processEvents()
+        cursor = self.log.textEdit.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertText(text)
+        self.log.textEdit.setTextCursor(cursor)
+        self.log.textEdit.ensureCursorVisible()
+
     def set_status(self, text):
         self.label_5.setText('Status: '+text)
 
@@ -71,39 +108,50 @@ class ClientMainWindow(QMainWindow, ClientInterface.Ui_MainWindow):
         else:
             self.lineEdit_3.setEnabled(True)
 
-    def login_pre(self, params):
-        self.jl.login(ui_params=params)
+    def check_login_pre(self):
+        return self.jl.check_login()
+
+    def login_pre(self, soup=None):
+        self.jl.login(soup)
+
+    def reset_timeout(self):
+        timeout = self.lineEdit_3.text()
+        try:
+            timeout = int(timeout)
+            self.jl.timeout = timeout
+        except Exception as e:
+            print 'Error Timeout'
 
     def login(self):
+        QApplication.processEvents()
+        self.reset_timeout()
         usr = self.lineEdit.text()
         pw = self.lineEdit_2.text()
-        captcha_check = self.radioButton.isChecked()
+        # captcha_check = self.radioButton.isChecked()
+        captcha_check = True
         self.jl.check_captcha = captcha_check
         if usr and pw:
             self.jl.user = usr
             self.jl.pw = pw
             self.jl.posts['user'] = usr
             self.jl.posts['pass'] = pw
+            self.jl.cdb.db_name = 'Canvas_' + 'xiaoliran12'
             if self.pushButton.text() == 'Login':
-                ui_params = {
-                        'window': self,
-                }
                 if self.jl.check_captcha:
-                    xsoup, xres = self.jl.check_login()
+                    xsoup, xres = self.check_login_pre()
                     if not xres:
-                        self.jl.login(xsoup, ui_params=ui_params)
+                        self.login_pre(xsoup)
                         self.set_status('Log in')
                         self.jl.cdb.init_db()
+                        self.jl.get_courses()
+                        self.jl.get_assignments()
+                        self.jl.get_attachments()
                     else:
                         self.set_status('Log in')
                         self.jl.cdb.init_db()
-                else:
-                    self.pushButton.setText('Enter Captcha')
-                    TimeoutThread(10000, self.login_pre, ui_params)
-            if not self.login_signal and self.pushButton.text() == 'Enter Captcha':
-                self.login_signal = True
-                self.pushButton.setText('Login')
-
+                        self.jl.get_courses()
+                        self.jl.get_assignments()
+                        self.jl.get_attachments()
         else:
             msgbox = ClientMessageBox.MessageBoxDlg()
             msgbox.slotCritical(QString(u'Please input your username and password！'))

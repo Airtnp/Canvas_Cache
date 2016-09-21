@@ -21,10 +21,11 @@ Cache slow Canvas
 * Download 
 
 ## TODO
-* [.] Write a GUI for it (PyQt)
-* [.] Improve downloading
-* [.] Use more accurate OCR
-* [.] Use database record to improve file downloading
+* [ ] <del> Write a GUI for it (PyQt) <del/>
+* [ ] Improve downloading
+* [ ] Use more accurate OCR
+* [x] Use database record to improve file downloading
+* [ ] Write C# UWP Win 10 Program
 
 ## License
 * Do whatever you want

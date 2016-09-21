@@ -62,8 +62,8 @@ class JaccountLogin:
         self.course_file = {}
         self.hw_path = 'Homework'
         self.fl_path = 'File'
-        self.ban_sites = ['2015 Fall Entry', 'Current Students']
-        # self.ban_sites = []
+        # self.ban_sites = ['2015 Fall Entry', 'Current Students']
+        self.ban_sites = []
         self.refresh_files = 0
         self.cdb = CanvasDataBase(host, host_user, host_pw, self.user)
         # self.cdb.init_db()
@@ -240,7 +240,7 @@ class JaccountLogin:
             # ssoup, sres = self.check_login()
             # if not sres:
             #   self.login(ssoup)
-            response = self.opener.open(host_url+'courses', timeout=self.timeout)
+            response = self.get_url_data(host_url+'courses')
             soup = BeautifulSoup(response)
             courses = re.findall('<a href=\"(.*?)\" title="(.*?)\">', soup.prettify())
             for course in courses:
@@ -248,6 +248,97 @@ class JaccountLogin:
                 self.course_url.append(course[0])
                 self.course_title.append(course[1])
             print "---End Fetching Courses---"
+        except Exception as e:
+            print e
+            print traceback.print_exc()
+
+    def get_url_data(self, url):
+        try:
+            data = self.opener.open(url, timeout=self.timeout)
+        except urllib2.URLError:
+            print 'URL Timeout error'
+            data = self.get_url_data(url)
+        except SSLError:
+            print 'SSL handshake error'
+            data = self.get_url_data(url)
+        except Exception as e:
+            print e
+            print traceback.print_exc()
+            data = None
+        return data
+
+    def get_course_assignments(self, c_title, c_url):
+        try:
+            suffix_url = 'include%5B%5D=assignments' \
+                             '&include%5B%5D=discussion_topic' \
+                             '&exclude_response_fields%5B%5D=description' \
+                             '&exclude_response_fields%5B%5D=rubric' \
+                             '&override_assignment_dates=true'
+            print "\n\t-Begin Assignments for " + c_title + '-'
+            self.make_dir(self.hw_path+'/'+c_title)
+            course_url = host_url+'api/v1/'+c_url+'/assignment_groups'+'?'+suffix_url
+            req = urllib2.Request(course_url)
+            response = self.opener.open(req, timeout=self.timeout)
+            # print BeautifulSoup(response).prettify()
+            json_data = response.read()
+            json_data = re.findall('\[(\{.*\})\]', json_data)
+            assignment_data = self.get_json(json_data[0])
+            assignments = assignment_data['assignments']
+            self.course_assign[c_title] = []
+            ad = {}
+
+            properties = ['id', 'due_at', 'unlock_at', 'updated_at', 'created_at', 'name', 'html_url']
+            for assignment in assignments:
+                db_list = [0, 0, 0, 0, 0, 0, 0]
+                for p in properties:
+                    if p in assignment.keys():
+                        aid = assignment[p]
+                        ad[p] = aid
+                    else:
+                        ad[p] = 'NULL'
+
+                db_list[0] = ad['id']  # ID
+                db_list[1] = c_title  # COURSE
+                db_list[2] = ad['name']  # Name
+                db_list[3] = ad['created_at']
+                db_list[4] = ad['updated_at']
+                db_list[5] = ad['due_at']
+                db_list[6] = ad['unlock_at']
+
+                assign_data = self.get_url_data(ad['html_url'])
+                if assign_data:
+                    soup = BeautifulSoup(assign_data)
+                    files = soup.findAll('a', {'class', 'instructure_scribd_file'})
+                    ad['files'] = []
+                    for afile in files:
+                        href = afile['href']
+                        title = afile['title']
+                        fl = {
+                            'url': host_url+href,
+                            'title': title,
+                        }
+                        ad['files'].append(fl)
+
+                        fl['title'] = self.hw_path+'/'+c_title + '/' + title
+                        try:
+                            TimeoutThread(self.timeout, self.get_file, fl)
+                        except TimeLimitExpired:
+                            print fl['title']
+                            print 'Download fail for first time, try second time'
+                            try:
+                                TimeoutThread(self.timeout, self.get_file, fl)
+                            except TimeLimitExpired:
+                                print fl['title']
+                                print 'Download fail!'
+                    self.cdb.op_assignment(db_list)
+                    self.course_assign[c_title].append(ad)
+            print "\t-End Assignments for " + c_title + '-'
+        except urllib2.URLError:
+            print 'URL Timeout error'
+            self.get_course_assignments(c_title, c_url)
+        except SSLError:
+            print 'SSL handshake error'
+            self.get_course_assignments(c_title, c_url)
         except Exception as e:
             print e
             print traceback.print_exc()
@@ -268,70 +359,10 @@ class JaccountLogin:
             # if not sres:
             #    self.login(ssoup)
             self.make_dir(self.hw_path)
-            suffix_url = 'include%5B%5D=assignments' \
-                         '&include%5B%5D=discussion_topic' \
-                         '&exclude_response_fields%5B%5D=description' \
-                         '&exclude_response_fields%5B%5D=rubric' \
-                         '&override_assignment_dates=true'
             for i in range(0, len(self.course_url)):
-                print "\n\t-Begin Assignments for " + self.course_title[i] + '-'
-                self.make_dir(self.hw_path+'/'+self.course_title[i])
-                course_url = host_url+'api/v1/'+self.course_url[i]+'/assignment_groups'+'?'+suffix_url
-                req = urllib2.Request(course_url)
-                response = self.opener.open(req, timeout=self.timeout)
-                # print BeautifulSoup(response).prettify()
-                json_data = response.read()
-                json_data = re.findall('\[(\{.*\})\]', json_data)
-                assignment_data = self.get_json(json_data[0])
-                assignments = assignment_data['assignments']
-                self.course_assign[self.course_title[i]] = []
-                ad = {}
-
-                properties = ['id', 'due_at', 'unlock_at', 'updated_at', 'created_at', 'name', 'html_url']
-                for assignment in assignments:
-                    db_list = [0, 0, 0, 0, 0, 0, 0]
-                    for p in properties:
-                        if p in assignment.keys():
-                            aid = assignment[p]
-                            ad[p] = aid
-                        else:
-                            ad[p] = 'NULL'
-
-                    db_list[0] = ad['id']  # ID
-                    db_list[1] = self.course_title[i]  # COURSE
-                    db_list[2] = ad['name']  # Name
-                    db_list[3] = ad['created_at']
-                    db_list[4] = ad['updated_at']
-                    db_list[5] = ad['due_at']
-                    db_list[6] = ad['unlock_at']
-
-                    assign_data = urllib2.urlopen(ad['html_url'])
-                    soup = BeautifulSoup(assign_data)
-                    files = soup.findAll('a', {'class', 'instructure_scribd_file'})
-                    ad['files'] = []
-                    for afile in files:
-                        href = afile['href']
-                        title = afile['title']
-                        fl = {
-                            'url': host_url+href,
-                            'title': title,
-                        }
-                        ad['files'].append(fl)
-
-                        fl['title'] = self.hw_path+'/'+self.course_title[i] + '/' + title
-                        try:
-                            TimeoutThread(self.timeout, self.get_file, fl)
-                        except TimeLimitExpired:
-                            print fl['title']
-                            print 'Download fail for first time, try second time'
-                            try:
-                                TimeoutThread(self.timeout, self.get_file, fl)
-                            except TimeLimitExpired:
-                                print fl['title']
-                                print 'Download fail!'
-                    self.cdb.op_assignment(db_list)
-                    self.course_assign[self.course_title[i]].append(ad)
-                print "\t-End Assignments for " + self.course_title[i] + '-'
+                c_title = self.course_title[i]
+                c_url = self.course_url[i]
+                self.get_course_assignments(c_title, c_url)
             print "---End Fetching Assignments---"
         except Exception as e:
             print e
@@ -398,6 +429,12 @@ class JaccountLogin:
                         except Exception as e:
                             db_list[12] = 'failed'
                     self.cdb.op_file(db_list)
+        except urllib2.URLError:
+            print 'URL Timeout error'
+            t_files = self.get_folder_files(fid, path_prefix)
+        except SSLError:
+            print 'SSL handshake error'
+            t_files = self.get_folder_files(fid, path_prefix)
         except Exception as e:
             print e
             t_files = []
@@ -439,6 +476,12 @@ class JaccountLogin:
                 a_file['files_detail'] = self.get_folder_files(fid, path_prefix)
                 a_folder['file'] = a_file
                 t_folder.append(a_folder)
+        except urllib2.URLError:
+            print 'URL Timeout error'
+            t_folder = self.get_folder_files(fid, path_prefix)
+        except SSLError:
+            print 'SSL handshake error'
+            t_folder = self.get_folder_files(fid, path_prefix)
         except Exception as e:
             print e
             t_folder = []
@@ -469,7 +512,7 @@ class JaccountLogin:
                 self.make_dir(self.fl_path+'/'+self.course_title[i])
                 root_url = host_url+'api/v1/'+self.course_url[i]+'/folders/root'
                 req = urllib2.Request(root_url)
-                response = self.opener.open(req, timeout=self.timeout)
+                response = self.get_url_data(req)
                 # print BeautifulSoup(response).prettify()
                 json_data = response.read()
                 json_data = re.findall(';(\{.*\})', json_data)
@@ -492,6 +535,12 @@ class JaccountLogin:
                 self.course_attach[self.course_title[i]]['root'] = a_folder
                 print "\t-End Files for " + self.course_title[i] + '-'
             print "---End Fetching Files---"
+        except urllib2.URLError:
+            print 'URL Timeout error'
+            self.get_attachments()
+        except SSLError:
+            print 'SSL handshake error'
+            self.get_attachments()
         except Exception as e:
             print e
             print traceback.print_exc()

@@ -33,8 +33,8 @@
      <widget class="QLineEdit" name="lineEdit">
       <property name="geometry">
        <rect>
-        <x>220</x>
-        <y>150</y>
+        <x>260</x>
+        <y>180</y>
         <width>171</width>
         <height>20</height>
        </rect>
@@ -43,18 +43,8 @@
      <widget class="QLineEdit" name="lineEdit_2">
       <property name="geometry">
        <rect>
-        <x>220</x>
-        <y>190</y>
-        <width>171</width>
-        <height>20</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QLineEdit" name="lineEdit_3">
-      <property name="geometry">
-       <rect>
-        <x>220</x>
-        <y>230</y>
+        <x>260</x>
+        <y>220</y>
         <width>171</width>
         <height>20</height>
        </rect>
@@ -63,8 +53,8 @@
      <widget class="QLabel" name="label">
       <property name="geometry">
        <rect>
-        <x>150</x>
-        <y>150</y>
+        <x>190</x>
+        <y>180</y>
         <width>71</width>
         <height>21</height>
        </rect>
@@ -79,30 +69,14 @@
      <widget class="QLabel" name="label_2">
       <property name="geometry">
        <rect>
-        <x>150</x>
-        <y>190</y>
+        <x>190</x>
+        <y>220</y>
         <width>71</width>
         <height>21</height>
        </rect>
       </property>
       <property name="text">
        <string>Password</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_3">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>222</y>
-        <width>71</width>
-        <height>31</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Captcha</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -130,16 +104,6 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QGraphicsView" name="graphicsView">
-      <property name="geometry">
-       <rect>
-        <x>420</x>
-        <y>200</y>
-        <width>111</width>
-        <height>51</height>
-       </rect>
-      </property>
-     </widget>
      <widget class="QPushButton" name="pushButton">
       <property name="geometry">
        <rect>
@@ -153,17 +117,33 @@
        <string>Login</string>
       </property>
      </widget>
-     <widget class="QRadioButton" name="radioButton">
+     <widget class="QLineEdit" name="lineEdit_3">
       <property name="geometry">
        <rect>
-        <x>420</x>
-        <y>160</y>
-        <width>131</width>
-        <height>21</height>
+        <x>510</x>
+        <y>130</y>
+        <width>51</width>
+        <height>20</height>
        </rect>
       </property>
       <property name="text">
-       <string>Auto fill captcha</string>
+       <string>10</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_3">
+      <property name="geometry">
+       <rect>
+        <x>450</x>
+        <y>120</y>
+        <width>61</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Timeout</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
       </property>
      </widget>
     </widget>
@@ -316,12 +296,6 @@
        <string>Update Announcements</string>
       </property>
      </widget>
-     <zorder>label_9</zorder>
-     <zorder>tableWidget_3</zorder>
-     <zorder>pushButton_4</zorder>
-     <zorder>label_9</zorder>
-     <zorder>tableWidget_3</zorder>
-     <zorder>pushButton_4</zorder>
     </widget>
    </widget>
    <widget class="QLabel" name="label_6">

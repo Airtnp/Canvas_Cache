@@ -25,7 +25,7 @@ class CanvasDataBase:
         self.cur.execute(drop_query)
 
     def init_db(self):
-        create_query = 'create database if not exists Canvas_' + self.name
+        create_query = 'create database if not exists ' + self.db_name
         self.cur.execute(create_query)
         self.conn.select_db(self.db_name)
         assign_table_query = \
