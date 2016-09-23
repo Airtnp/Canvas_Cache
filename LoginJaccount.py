@@ -9,6 +9,8 @@ import traceback
 import json
 import os
 import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 from bs4 import BeautifulSoup
 from pytesseract import image_to_string
 from time import sleep
@@ -24,12 +26,14 @@ post_url = 'https://jaccount.sjtu.edu.cn/jaccount/ulogin'
 
 
 class JaccountLogin:
-    def __init__(self, usr, pw, timeout, threshold=140, captcha=False, host='localhost', host_user='root', host_pw=''):
+    def __init__(self, usr, pw, timeout, dtimeout=10, threshold=140, captcha=False, host='localhost', host_user='root', host_pw=''):
         self.user = usr
         self.pw = pw
         self.timeout = timeout
         self.thresold = threshold
         self.check_captcha = captcha
+        if not dtimeout:
+            self.dtimeout = self.timeout
 
         self.img_table = []
         for i in range(256):
@@ -58,6 +62,8 @@ class JaccountLogin:
         self.course_url = []
         self.course_title = []
         self.course_assign = {}
+        self.course_discuss = {}
+        self.course_announce = {}
         self.course_attach = {}
         self.course_file = {}
         self.hw_path = 'Homework'
@@ -289,7 +295,7 @@ class JaccountLogin:
 
             properties = ['id', 'due_at', 'unlock_at', 'updated_at', 'created_at', 'name', 'html_url']
             for assignment in assignments:
-                db_list = [0, 0, 0, 0, 0, 0, 0]
+                db_list = [0, 0, 0, 0, 0, 0, 0, 0]
                 for p in properties:
                     if p in assignment.keys():
                         aid = assignment[p]
@@ -304,6 +310,7 @@ class JaccountLogin:
                 db_list[4] = ad['updated_at']
                 db_list[5] = ad['due_at']
                 db_list[6] = ad['unlock_at']
+                db_list[7] = 'success'
 
                 assign_data = self.get_url_data(ad['html_url'])
                 if assign_data:
@@ -319,17 +326,20 @@ class JaccountLogin:
                         }
                         ad['files'].append(fl)
 
-                        fl['title'] = self.hw_path+'/'+c_title + '/' + title
-                        try:
-                            TimeoutThread(self.timeout, self.get_file, fl)
-                        except TimeLimitExpired:
-                            print fl['title']
-                            print 'Download fail for first time, try second time'
+                        fl['title'] = self.hw_path+'/'+c_title + '/' + title + '_' + ad['id']
+                        download_status = self.cdb.check_assignment(db_list)
+                        if download_status != 'success' or self.refresh_files == 1:
                             try:
-                                TimeoutThread(self.timeout, self.get_file, fl)
+                                TimeoutThread(self.dtimeout, self.get_file, fl)
                             except TimeLimitExpired:
                                 print fl['title']
-                                print 'Download fail!'
+                                print 'Download fail for first time, try second time'
+                                try:
+                                    TimeoutThread(self.dtimeout, self.get_file, fl)
+                                except TimeLimitExpired:
+                                    print fl['title']
+                                    print 'Download fail!'
+                                    db_list[7] = 'failed'
                     self.cdb.op_assignment(db_list)
                     self.course_assign[c_title].append(ad)
             print "\t-End Assignments for " + c_title + '-'
@@ -338,6 +348,9 @@ class JaccountLogin:
             self.get_course_assignments(c_title, c_url)
         except SSLError:
             print 'SSL handshake error'
+            self.get_course_assignments(c_title, c_url)
+        except ValueError:
+            print 'Unknown JSON Error'
             self.get_course_assignments(c_title, c_url)
         except Exception as e:
             print e
@@ -410,18 +423,18 @@ class JaccountLogin:
                     t_files.append(r_file)
                     fl = {}
                     fl['url'] = r_file['url']
-                    fl['title'] = path_prefix + '/' + r_file['display_name']
+                    fl['title'] = path_prefix + '/' + r_file['display_name'] + '_' + r_file['id']
                     download_status = self.cdb.check_file_download(db_list)
                     # print download_status
                     # self.refresh_files = 1
                     if download_status != 'success' or self.refresh_files == 1:
                         try:
-                            TimeoutThread(self.timeout, self.get_file, fl)
+                            TimeoutThread(self.dtimeout, self.get_file, fl)
                         except TimeLimitExpired:
                             print fl['title']
                             print 'Download fail for first time, try second time'
                             try:
-                                TimeoutThread(self.timeout, self.get_file, fl)
+                                TimeoutThread(self.dtimeout, self.get_file, fl)
                             except TimeLimitExpired:
                                 print fl['title']
                                 print 'Download fail!'
@@ -545,6 +558,219 @@ class JaccountLogin:
             print e
             print traceback.print_exc()
 
+    def get_reply(self, base_url, diss_id, base_title, a_title):
+        reply_url = base_url + '/{}/' + 'view?include_new_entries=1&include_enrollment_state=1'
+        reply_url = reply_url.format(diss_id)
+        reply_properties = [
+            'unread_entries', 'forced_entries', 'entry_ratings',
+            'participants', 'view', 'new_entries'
+        ]
+        reply_part_properties = [
+            'id', 'display_name', 'avatar_image_url', 'html_url'
+        ]
+        reply_view_properties = [
+            'id', 'user_id', 'parent_id', 'created_at',
+            'updated_at', 'rating_count', 'rating_sum', 'message',
+            'replies',
+        ] #
+        reply_view_reply_properties = [
+            'id', 'user_id', 'parent_id', 'created_at', 'updated_at', 'message', 'rating_count',
+            'rating_sum', 'deleted'
+        ]
+        t_reply = []
+        reply_data = self.get_url_data(reply_url)
+        json_data = reply_data.read().replace('while(1);', '')
+        json_data = self.get_json(json_data)
+        if json_data:
+            reply = json_data
+            a_reply = {}
+            for dp in reply_properties:
+                if dp in reply.keys():
+                    a_reply[dp] = reply[dp]
+                else:
+                    a_reply[dp] = None
+            if a_reply['view']:
+                for rep in a_reply['view']:
+                    db_list = [0]*11
+                    db_list[0] = rep['id']
+                    db_list[1] = base_title
+
+                    db_list[5] = 'first'
+                    db_list[3] = ''
+                    if not rep['deleted']:
+                        db_list[2] = rep['user_id']
+                        for p in participants:
+                            if p['id'] == db_list[2]:
+                                db_list[3] = rep['display_name']
+                                break
+                        db_list[7] = rep['message']
+                    else:
+                        db_list[2] = rep['editor_id']
+                        db_list[5] = db_list[5] + '_deleted'
+                        db_list[3] = db_list[3] + '_deleted'
+                        db_list[7] = ''
+
+                    db_list[4] = rep['parent_id']
+                    db_list[6] = a_title
+                    db_list[8] = rep['created_at']
+                    db_list[9] = rep['updated_at']
+                    db_list[10] = rep['rating_sum']
+                    self.cdb.op_reply(db_list)
+                    if 'replies' in rep.keys():
+                        if rep['replies']:
+                            for rrep in rep['replies']:
+                                ddb_list = [0]*11
+                                ddb_list[0] = rrep['id']
+                                ddb_list[1] = base_title
+                                ddb_list[2] = rrep['user_id']
+
+                                ddb_list[5] = 'second'
+                                ddb_list[3] = ''
+                                if not rep['deleted']:
+                                    db_list[2] = rep['user_id']
+                                    for p in participants:
+                                        if p['id'] == ddb_list[2]:
+                                            db_list[3] = rrep['display_name']
+                                            break
+                                    ddb_list[7] = rrep['message']
+                                else:
+                                    ddb_list[2] = rrep['editor_id']
+                                    ddb_list[5] = ddb_list[5] + '_deleted'
+                                    ddb_list[3] = ddb_list[3] + '_deleted'
+                                    ddb_list[7] = ''
+
+                                ddb_list[4] = rrep['parent_id']
+                                ddb_list[6] = a_title
+                                ddb_list[8] = rrep['created_at']
+                                ddb_list[9] = rrep['updated_at']
+                                ddb_list[10] = rrep['rating_sum']
+                                self.cdb.op_reply(ddb_list)
+            t_reply.append(a_reply)
+        return t_reply
+
+    def get_announcement(self, base_url, base_title):
+        suffix_url = '?only_announcements=true'
+        anno_url = base_url+suffix_url
+        anno_properties = [
+            'id', 'title', 'last_reply_at', 'delayed_post_at', 'created_at', 'updated_at',
+            'posted_at', 'assignment_id', 'root_topic_id', 'position',
+            'discussion_type', 'lock_at', 'permissions',
+            'user_can_see_posts', 'read_state',
+            'topic_children', 'attachments', 'author',
+            'html_url', 'url', 'group_category_id', 'locked', 'lock_explanation',
+            'message', 'pinned', 'subscription_hold'
+        ]
+        anno_perm_properties = [
+            'attach', 'update', 'reply', 'delete'
+        ] # topic_children/attachments: list
+        anno_author_properties = ['id', 'display_name', 'avatar_image_url']
+        anno_data = self.get_url_data(anno_url)
+        json_data = anno_data.read().replace("while(1);", '')
+        json_data = self.get_json(json_data)
+        t_anno = []
+        if json_data:
+            for announcement in json_data:
+                a_anno = {}
+
+                for dp in anno_properties:
+                    if dp in announcement.keys():
+                        a_anno[dp] = announcement[dp]
+                    else:
+                        a_anno[dp] = ''
+
+                db_list = [0]*15
+                db_list[0] = a_anno['id']
+                db_list[1] = base_title
+                db_list[2] = a_anno['url']
+                db_list[3] = a_anno['title']
+                db_list[4] = a_anno['message']
+                a_perm = a_anno['permissions']
+                db_list[5] = str(int(a_perm['attach'])*1000+int(a_perm['update'])*100+int(a_perm['reply'])*10+int(a_perm['delete']))
+                db_list[6] = a_anno['author']['id']
+                db_list[7] = a_anno['author']['display_name']
+                db_list[8] = a_anno['read_state']
+                db_list[9] = a_anno['last_reply_at']
+                db_list[10] = a_anno['created_at']
+                db_list[11] = a_anno['updated_at']
+                db_list[12] = a_anno['posted_at']
+                db_list[13] = a_anno['discussion_type']
+                db_list[14] = a_anno['group_category_id']
+                self.cdb.op_information(db_list, 'announcements')
+
+                a_anno['reply'] = self.get_reply(base_url, a_anno['id'], base_title, a_anno['title'])
+                t_anno.append(a_anno)
+                print("\t\t\t"+a_anno['title'].decode('utf-8'))
+        return t_anno
+
+    def get_discussion(self, base_url, base_title):
+        diss_url = base_url
+        diss_properties = [
+            'id', 'title', 'last_reply_at', 'delayed_post_at', 'created_at', 'updated_at',
+            'posted_at', 'assignment_id', 'root_topic_id', 'position',
+            'discussion_type', 'lock_at', 'permissions',
+            'user_can_see_posts', 'read_state',
+            'topic_children', 'attachments', 'author',
+            'html_url', 'url', 'group_category_id', 'locked', 'lock_explanation',
+            'message', 'pinned'
+        ]
+        diss_perm_properties = [
+            'attach', 'update', 'reply', 'delete'
+        ] # topic_children/attachments: list
+        diss_author_properties = [
+            'id', 'display_name', 'avatar_image_url'
+        ]
+        diss_data = self.get_url_data(diss_url)
+        json_data = diss_data.read().replace("while(1);", '')
+        json_data = self.get_json(json_data)
+        t_diss = []
+        if json_data:
+            for discussion in json_data:
+                a_diss = {}
+                for dp in diss_properties:
+                    if dp in discussion.keys():
+                        a_diss[dp] = discussion[dp]
+                    else:
+                        a_diss[dp] = ''
+
+                db_list = [0]*15
+                db_list[0] = a_diss['id']
+                db_list[1] = base_title
+                db_list[2] = a_diss['url']
+                db_list[3] = a_diss['title']
+                db_list[4] = a_diss['message']
+                a_perm = a_diss['permissions']
+                db_list[5] = str(int(a_perm['attach'])*1000+int(a_perm['update'])*100+int(a_perm['reply'])*10+int(a_perm['delete']))
+                db_list[6] = a_diss['author']['id']
+                db_list[7] = a_diss['author']['display_name']
+                db_list[8] = a_diss['read_state']
+                db_list[9] = a_diss['last_reply_at']
+                db_list[10] = a_diss['created_at']
+                db_list[11] = a_diss['updated_at']
+                db_list[12] = a_diss['posted_at']
+                db_list[13] = a_diss['discussion_type']
+                db_list[14] = a_diss['group_category_id']
+                self.cdb.op_information(db_list, 'discussions')
+
+                a_diss['reply'] = self.get_reply(base_url, a_diss['id'], base_title, a_diss['title'])
+                t_diss.append(a_diss)
+                print("\t\t\t"+a_diss['title'].decode('utf-8'))
+        return t_diss
+
+    def get_information(self):
+        print '\n---Begin Fetching Announcements+Discussions---'
+        anno_url = 'https://sjtu-umich.instructure.com/api/v1{}/discussion_topics'
+        diss_url = 'https://sjtu-umich.instructure.com/api/v1{}/discussion_topics'
+
+        for i in range(0, len(self.course_title)):
+            print '\n\t-Begin Fetching Announcements+Discussions For ' + self.course_title[i] + '-'
+            c_anno_url = anno_url.format(self.course_url[i])
+            c_diss_url = diss_url.format(self.course_url[i])
+            self.get_announcement(c_anno_url, self.course_title[i])
+            self.get_discussion(c_diss_url, self.course_title[i])
+
+            print '\n\t-End Fetching Announcements+Discussions For ' + self.course_title[i] + '-'
+
+        print '\n---End Fetching Announcements+Discussions---'
 
 if __name__ == '__main__':
     jl = JaccountLogin('username', 'password', 10, 70, True)
@@ -553,7 +779,8 @@ if __name__ == '__main__':
     if not xres:
         jl.login(xsoup)
     jl.get_courses()
-    # jl.get_assignments()
+    jl.get_information()
+    jl.get_assignments()
     jl.get_attachments()
 
 

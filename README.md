@@ -2,7 +2,7 @@
 Cache slow Canvas
 
 ## Version
-* 0.01
+* 0.02
 
 ## Intro
 * Use urllib/urllib2/cookielib to situmulate login
@@ -13,8 +13,9 @@ Cache slow Canvas
 
 ## Usage
 * Install tesseract-ocr (or you can manuelly input the captcha every time)
-* Replace the username/password in LoginJaccount.py
-* `python LoginJaccount.py`
+* Install MySQL
+* Replace the username/password in Config.ini
+* `python Cache.py`
 
 ## Problem
 * Canvas is so slow so URLError and SSLError will occur
