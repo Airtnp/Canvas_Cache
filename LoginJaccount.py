@@ -571,7 +571,7 @@ class JaccountLogin:
         reply_view_properties = [
             'id', 'user_id', 'parent_id', 'created_at',
             'updated_at', 'rating_count', 'rating_sum', 'message',
-            'replies',
+            'replies', 'deleted'
         ] #
         reply_view_reply_properties = [
             'id', 'user_id', 'parent_id', 'created_at', 'updated_at', 'message', 'rating_count',
@@ -588,20 +588,20 @@ class JaccountLogin:
                 if dp in reply.keys():
                     a_reply[dp] = reply[dp]
                 else:
-                    a_reply[dp] = None
-            if a_reply['view']:
-                for rep in a_reply['view']:
+                    a_reply[dp] = ''
+            if reply['view']:
+                for rep in reply['view']:
                     db_list = [0]*11
                     db_list[0] = rep['id']
                     db_list[1] = base_title
 
                     db_list[5] = 'first'
                     db_list[3] = ''
-                    if not rep['deleted']:
+                    if not 'deleted' in rep.keys() or not rep['deleted']:
                         db_list[2] = rep['user_id']
-                        for p in participants:
+                        for p in reply['participants']:
                             if p['id'] == db_list[2]:
-                                db_list[3] = rep['display_name']
+                                db_list[3] = p['display_name']
                                 break
                         db_list[7] = rep['message']
                     else:
@@ -622,15 +622,14 @@ class JaccountLogin:
                                 ddb_list = [0]*11
                                 ddb_list[0] = rrep['id']
                                 ddb_list[1] = base_title
-                                ddb_list[2] = rrep['user_id']
-
+                                
                                 ddb_list[5] = 'second'
                                 ddb_list[3] = ''
-                                if not rep['deleted']:
-                                    db_list[2] = rep['user_id']
-                                    for p in participants:
+                                if not 'deleted' in rrep.keys() or not rrep['deleted']:
+                                    db_list[2] = rrep['user_id']
+                                    for p in reply['participants']:
                                         if p['id'] == ddb_list[2]:
-                                            db_list[3] = rrep['display_name']
+                                            ddb_list[3] = p['display_name']
                                             break
                                     ddb_list[7] = rrep['message']
                                 else:
