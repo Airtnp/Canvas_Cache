@@ -326,7 +326,7 @@ class JaccountLogin:
                         }
                         ad['files'].append(fl)
 
-                        fl['title'] = self.hw_path+'/'+c_title + '/' + title + '_' + ad['id']
+                        fl['title'] = self.hw_path+'/'+c_title + '/' + title + '_' + str(ad['id'])
                         download_status = self.cdb.check_assignment(db_list)
                         if download_status != 'success' or self.refresh_files == 1:
                             try:
@@ -351,7 +351,8 @@ class JaccountLogin:
             self.get_course_assignments(c_title, c_url)
         except ValueError:
             print 'Unknown JSON Error'
-            self.get_course_assignments(c_title, c_url)
+            print response.read()
+            # self.get_course_assignments(c_title, c_url)
         except Exception as e:
             print e
             print traceback.print_exc()
@@ -423,7 +424,7 @@ class JaccountLogin:
                     t_files.append(r_file)
                     fl = {}
                     fl['url'] = r_file['url']
-                    fl['title'] = path_prefix + '/' + r_file['display_name'] + '_' + r_file['id']
+                    fl['title'] = path_prefix + '/' + r_file['display_name'] + '_' + str(r_file['id'])
                     download_status = self.cdb.check_file_download(db_list)
                     # print download_status
                     # self.refresh_files = 1
@@ -598,6 +599,7 @@ class JaccountLogin:
                     db_list[5] = 'first'
                     db_list[3] = ''
                     if not 'deleted' in rep.keys() or not rep['deleted']:
+
                         db_list[2] = rep['user_id']
                         for p in reply['participants']:
                             if p['id'] == db_list[2]:
@@ -626,7 +628,7 @@ class JaccountLogin:
                                 ddb_list[5] = 'second'
                                 ddb_list[3] = ''
                                 if not 'deleted' in rrep.keys() or not rrep['deleted']:
-                                    db_list[2] = rrep['user_id']
+                                    ddb_list[2] = rrep['user_id']
                                     for p in reply['participants']:
                                         if p['id'] == ddb_list[2]:
                                             ddb_list[3] = p['display_name']
