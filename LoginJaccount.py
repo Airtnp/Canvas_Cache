@@ -34,6 +34,8 @@ class JaccountLogin:
         self.check_captcha = captcha
         if not dtimeout:
             self.dtimeout = self.timeout
+        else:
+            self.dtimeout = dtimeout
 
         self.img_table = []
         for i in range(256):
@@ -700,7 +702,8 @@ class JaccountLogin:
 
                 a_anno['reply'] = self.get_reply(base_url, a_anno['id'], base_title, a_anno['title'])
                 t_anno.append(a_anno)
-                print("\t\t\t"+a_anno['title'].decode('utf-8'))
+                if db_list[8] == 'unread':
+                    print("\t\t\t"+a_anno['title'].decode('utf-8'))
         return t_anno
 
     def get_discussion(self, base_url, base_title):
@@ -754,7 +757,8 @@ class JaccountLogin:
 
                 a_diss['reply'] = self.get_reply(base_url, a_diss['id'], base_title, a_diss['title'])
                 t_diss.append(a_diss)
-                print("\t\t\t"+a_diss['title'].decode('utf-8'))
+                if db_list[8] == 'unread':
+                    print("\t\t\t"+a_diss['title'].decode('utf-8'))
         return t_diss
 
     def get_information(self):
