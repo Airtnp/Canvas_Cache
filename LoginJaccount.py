@@ -289,61 +289,65 @@ class JaccountLogin:
             response = self.opener.open(req, timeout=self.timeout)
             # print BeautifulSoup(response).prettify()
             json_data = response.read()
-            json_data = re.findall('\[(\{.*\})\]', json_data)
-            assignment_data = self.get_json(json_data[0])
-            assignments = assignment_data['assignments']
-            self.course_assign[c_title] = []
-            ad = {}
+            json_data = json_data.replace('while(1);', '')
+            json_data = self.get_json(json_data)
+            for assign_group in json_data:
+                # assign_group = re.findall('(\{.*\})', assign_group)
+                # has new things: assignment_group
+                # assignment_data = self.get_json(assign_group)
+                assignments = assign_group['assignments']
+                self.course_assign[c_title] = []
+                ad = {}
 
-            properties = ['id', 'due_at', 'unlock_at', 'updated_at', 'created_at', 'name', 'html_url']
-            for assignment in assignments:
-                db_list = [0, 0, 0, 0, 0, 0, 0, 0]
-                for p in properties:
-                    if p in assignment.keys():
-                        aid = assignment[p]
-                        ad[p] = aid
-                    else:
-                        ad[p] = 'NULL'
+                properties = ['id', 'due_at', 'unlock_at', 'updated_at', 'created_at', 'name', 'html_url']
+                for assignment in assignments:
+                    db_list = [0, 0, 0, 0, 0, 0, 0, 0]
+                    for p in properties:
+                        if p in assignment.keys():
+                            aid = assignment[p]
+                            ad[p] = aid
+                        else:
+                            ad[p] = 'NULL'
 
-                db_list[0] = ad['id']  # ID
-                db_list[1] = c_title  # COURSE
-                db_list[2] = ad['name']  # Name
-                db_list[3] = ad['created_at']
-                db_list[4] = ad['updated_at']
-                db_list[5] = ad['due_at']
-                db_list[6] = ad['unlock_at']
-                db_list[7] = 'success'
+                    db_list[0] = ad['id']  # ID
+                    db_list[1] = c_title  # COURSE
+                    db_list[2] = ad['name']  # Name
+                    db_list[3] = ad['created_at']
+                    db_list[4] = ad['updated_at']
+                    db_list[5] = ad['due_at']
+                    db_list[6] = ad['unlock_at']
+                    db_list[7] = 'success'
 
-                assign_data = self.get_url_data(ad['html_url'])
-                if assign_data:
-                    soup = BeautifulSoup(assign_data)
-                    files = soup.findAll('a', {'class', 'instructure_scribd_file'})
-                    ad['files'] = []
-                    for afile in files:
-                        href = afile['href']
-                        title = afile['title']
-                        fl = {
-                            'url': host_url+href,
-                            'title': title,
-                        }
-                        ad['files'].append(fl)
+                    assign_data = self.get_url_data(ad['html_url'])
+                    if assign_data:
+                        soup = BeautifulSoup(assign_data)
+                        files = soup.findAll('a', {'class', 'instructure_scribd_file'})
+                        ad['files'] = []
+                        for afile in files:
+                            href = afile['href']
+                            title = afile['title']
+                            fl = {
+                                'url': host_url+href,
+                                'title': title,
+                            }
+                            ad['files'].append(fl)
 
-                        fl['title'] = self.hw_path+'/'+c_title + '/' + title + '_' + str(ad['id'])
-                        download_status = self.cdb.check_assignment(db_list)
-                        if download_status != 'success' or self.refresh_files == 1:
-                            try:
-                                TimeoutThread(self.dtimeout, self.get_file, fl)
-                            except TimeLimitExpired:
-                                print fl['title']
-                                print 'Download fail for first time, try second time'
+                            fl['title'] = self.hw_path+'/'+c_title + '/' + title + '_' + str(ad['id'])
+                            download_status = self.cdb.check_assignment(db_list)
+                            if download_status != 'success' or self.refresh_files == 1:
                                 try:
                                     TimeoutThread(self.dtimeout, self.get_file, fl)
                                 except TimeLimitExpired:
                                     print fl['title']
-                                    print 'Download fail!'
-                                    db_list[7] = 'failed'
-                    self.cdb.op_assignment(db_list)
-                    self.course_assign[c_title].append(ad)
+                                    print 'Download fail for first time, try second time'
+                                    try:
+                                        TimeoutThread(self.dtimeout, self.get_file, fl)
+                                    except TimeLimitExpired:
+                                        print fl['title']
+                                        print 'Download fail!'
+                                        db_list[7] = 'failed'
+                        self.cdb.op_assignment(db_list)
+                        self.course_assign[c_title].append(ad)
             print "\t-End Assignments for " + c_title + '-'
         except urllib2.URLError:
             print 'URL Timeout error'

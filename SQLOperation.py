@@ -152,7 +152,7 @@ class CanvasDataBase:
         aid = params[0]
         check_query = \
         '''
-        select * from files where id = {} and updated_at = '{}'
+        select * from assignments where id = {} and updated_at = '{}'
         '''.format(str(aid), params[4])
         length = self.cur.execute(check_query)
         for content in self.cur:
