@@ -331,8 +331,8 @@ class JaccountLogin:
                                 'title': title,
                             }
                             ad['files'].append(fl)
-
-                            fl['title'] = self.hw_path+'/'+c_title + '/' + title + '_' + str(ad['id'])
+                            title = title.split(".")
+                            fl['title'] = self.hw_path+'/'+c_title + '/' + title[0] + '_' + str(ad['id']) + '.' + title[1]
                             download_status = self.cdb.check_assignment(db_list)
                             if download_status != 'success' or self.refresh_files == 1:
                                 try:
@@ -430,7 +430,9 @@ class JaccountLogin:
                     t_files.append(r_file)
                     fl = {}
                     fl['url'] = r_file['url']
-                    fl['title'] = path_prefix + '/' + r_file['display_name'] + '_' + str(r_file['id'])
+                    title = r_file['display_name'].split(".")
+                    fl['title'] = path_prefix + '/' + title[0] + '_' + str(r_file['id']) + '.' + title[1]
+                    # fl['title'] = path_prefix + '/' + r_file['display_name'] + '_' + str(r_file['id'])
                     download_status = self.cdb.check_file_download(db_list)
                     # print download_status
                     # self.refresh_files = 1
