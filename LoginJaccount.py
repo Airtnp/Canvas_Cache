@@ -118,10 +118,10 @@ class JaccountLogin:
             return True
         except urllib2.URLError:
             print 'URL Timeout error'
-            return False
+            return self.get_file(params)
         except SSLError:
             print 'SSL handshake error'
-            return False
+            return self.get_file(params)
         except Exception as e:
             print e
             print traceback.print_exc()
@@ -339,12 +339,18 @@ class JaccountLogin:
                             download_status = self.cdb.check_assignment(db_list)
                             if download_status != 'success' or self.refresh_files == 1:
                                 try:
-                                    TimeoutThread(self.dtimeout, self.get_file, fl)
+                                    tt = TimeoutThread(self.dtimeout, self.get_file, fl)
+                                    if not tt.result:
+                                        print 'Download fail!'
+                                        db_list[7] = 'failed'
                                 except TimeLimitExpired:
                                     print fl['title']
                                     print 'Download fail for first time, try second time'
                                     try:
-                                        TimeoutThread(self.dtimeout, self.get_file, fl)
+                                        tt2 = TimeoutThread(self.dtimeout, self.get_file, fl)
+                                        if not tt2.result:
+                                            print 'Download fail!'
+                                            db_list[7] = 'failed'
                                     except TimeLimitExpired:
                                         print fl['title']
                                         print 'Download fail!'
@@ -444,12 +450,18 @@ class JaccountLogin:
                     # self.refresh_files = 1
                     if download_status != 'success' or self.refresh_files == 1:
                         try:
-                            TimeoutThread(self.dtimeout, self.get_file, fl)
+                            tt = TimeoutThread(self.dtimeout, self.get_file, fl)
+                            if not tt.result:
+                                print 'Download fail!'
+                                db_list[12] = 'failed'
                         except TimeLimitExpired:
                             print fl['title']
                             print 'Download fail for first time, try second time'
                             try:
-                                TimeoutThread(self.dtimeout, self.get_file, fl)
+                                tt2 = TimeoutThread(self.dtimeout, self.get_file, fl)
+                                if not tt2.result:
+                                    print 'Download fail!'
+                                    db_list[12] = 'failed'
                             except TimeLimitExpired:
                                 print fl['title']
                                 print 'Download fail!'
