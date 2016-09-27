@@ -17,7 +17,7 @@ from time import sleep
 from random import randint
 from PIL import Image
 from ssl import SSLError
-from LoginTimeout import TimeoutThread, TimeLimitExpired
+from LoginTimeout import TimeoutThread, TimeLimitExpired, DepthLimitExceeded
 from SQLOperation import CanvasDataBase
 
 host_url = 'https://sjtu-umich.instructure.com/'
@@ -103,14 +103,17 @@ class JaccountLogin:
     def debug_prettify(self, response):
         return BeautifulSoup(response).prettify()
 
-    def get_file(self, params):
+    def get_file(self, params, depth=2):
+        print 'Current depth: ' + str(depth)
+        if depth == 0:
+            raise DepthLimitExceeded()
         try:
-            print '\t\turl = ' + params['url']
+            print '\t\t\t\turl = ' + params['url']
             url = params['url']
             title = params['title']
             # t_type = sys.getdefaultencoding()
             # title = title.decode('utf-8').encode(t_type)
-            print '\t\ttitle = ' + title
+            print '\t\t\t\ttitle = ' + title
             content = self.opener.open(url, timeout=self.timeout)
             f = open(title, 'wb')
             f.write(content.read())
@@ -118,10 +121,12 @@ class JaccountLogin:
             return True
         except urllib2.URLError:
             print 'URL Timeout error'
-            return self.get_file(params)
+            return self.get_file(params, depth-1)
         except SSLError:
             print 'SSL handshake error'
-            return self.get_file(params)
+            return self.get_file(params, depth-1)
+        except DepthLimitExceeded:
+            raise TimeLimitExpired()
         except Exception as e:
             print e
             print traceback.print_exc()
@@ -275,7 +280,7 @@ class JaccountLogin:
             data = None
         return data
 
-    def get_course_assignments(self, c_title, c_url):
+    def get_course_assignments(self, c_title, c_url, print_sign=1):
         try:
             suffix_url = 'include%5B%5D=assignments' \
                              '&include%5B%5D=discussion_topic' \
@@ -340,30 +345,30 @@ class JaccountLogin:
                             if download_status != 'success' or self.refresh_files == 1:
                                 try:
                                     tt = TimeoutThread(self.dtimeout, self.get_file, fl)
-                                    if not tt.result:
-                                        print 'Download fail!'
-                                        db_list[7] = 'failed'
+                                    # if not tt.result:
+                                    #     print 'Download fail!'
+                                    #     db_list[7] = 'failed'
                                 except TimeLimitExpired:
                                     print fl['title']
                                     print 'Download fail for first time, try second time'
                                     try:
                                         tt2 = TimeoutThread(self.dtimeout, self.get_file, fl)
-                                        if not tt2.result:
-                                            print 'Download fail!'
-                                            db_list[7] = 'failed'
+                                        # if tt2.result == False:
+                                        #     print 'Download fail!'
+                                        #     db_list[7] = 'failed'
                                     except TimeLimitExpired:
                                         print fl['title']
                                         print 'Download fail!'
                                         db_list[7] = 'failed'
                         self.cdb.op_assignment(db_list)
-                        self.course_assign[c_title].append(ad)
+                        self.course_assign[c_title].append(ad)  
             print "\t-End Assignments for " + c_title + '-'
         except urllib2.URLError:
             print 'URL Timeout error'
-            self.get_course_assignments(c_title, c_url)
+            self.get_course_assignments(c_title, c_url, 0)
         except SSLError:
             print 'SSL handshake error'
-            self.get_course_assignments(c_title, c_url)
+            self.get_course_assignments(c_title, c_url, 0)
         except ValueError:
             print 'Unknown JSON Error'
             print response.read()
@@ -371,6 +376,9 @@ class JaccountLogin:
         except Exception as e:
             print e
             print traceback.print_exc()
+        if print_sign == 2: # for test
+            for ad in self.course_assign[c_title]:
+                print "\t\t" + c_title + '-' + ad['name']
 
     def get_assignments(self):
         '''
@@ -397,7 +405,7 @@ class JaccountLogin:
             print e
             print traceback.print_exc()
 
-    def get_folder_files(self, fid, path_prefix):
+    def get_folder_files(self, fid, path_prefix, print_sign=1):
         try:
             self.make_dir(path_prefix)
             fid = str(fid)
@@ -451,17 +459,17 @@ class JaccountLogin:
                     if download_status != 'success' or self.refresh_files == 1:
                         try:
                             tt = TimeoutThread(self.dtimeout, self.get_file, fl)
-                            if not tt.result:
-                                print 'Download fail!'
-                                db_list[12] = 'failed'
+                            # if not tt.result:
+                            #     print 'Download fail!'
+                            #     db_list[12] = 'failed'
                         except TimeLimitExpired:
                             print fl['title']
                             print 'Download fail for first time, try second time'
                             try:
                                 tt2 = TimeoutThread(self.dtimeout, self.get_file, fl)
-                                if not tt2.result:
-                                    print 'Download fail!'
-                                    db_list[12] = 'failed'
+                                # if tt2.result == False:
+                                #     print 'Download fail!'
+                                #     db_list[12] = 'failed'
                             except TimeLimitExpired:
                                 print fl['title']
                                 print 'Download fail!'
@@ -471,13 +479,16 @@ class JaccountLogin:
                     self.cdb.op_file(db_list)
         except urllib2.URLError:
             print 'URL Timeout error'
-            t_files = self.get_folder_files(fid, path_prefix)
+            t_files = self.get_folder_files(fid, path_prefix, 0)
         except SSLError:
             print 'SSL handshake error'
-            t_files = self.get_folder_files(fid, path_prefix)
+            t_files = self.get_folder_files(fid, path_prefix, 0)
         except Exception as e:
             print e
             t_files = []
+        if print_sign == 2: #for test
+            for r_file in t_files:
+                print "\t\t\t" + r_file['display_name']            
         return t_files
 
     def get_folder(self, fid, path_prefix):
@@ -507,7 +518,7 @@ class JaccountLogin:
                             a_file[fp] = folder_data[fp]
                     a_file['files_detail'] = self.get_folder_files(fid, path_prefix)
                     a_folder['file'] = a_file
-                    print('\n\t\tFolder-'+a_folder['name'])
+                    print('\n\t\tFolder-'+path_prefix+"/"+a_folder['name'])
                     a_folder['child_folder'] = self.get_folder(a_folder['id'], path_prefix+'/'+a_folder['name'])
                     t_folder.append(a_folder)
             else:
@@ -518,10 +529,10 @@ class JaccountLogin:
                 t_folder.append(a_folder)
         except urllib2.URLError:
             print 'URL Timeout error'
-            t_folder = self.get_folder_files(fid, path_prefix)
+            t_folder = self.get_folder(fid, path_prefix)
         except SSLError:
             print 'SSL handshake error'
-            t_folder = self.get_folder_files(fid, path_prefix)
+            t_folder = self.get_folder(fid, path_prefix)
         except Exception as e:
             print e
             t_folder = []
