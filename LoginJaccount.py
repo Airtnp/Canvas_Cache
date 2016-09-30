@@ -241,11 +241,26 @@ class JaccountLogin:
             print 'SSL handshake error'
             self.login()
         except IndexError:
-            print 'Login in Session'
+            # print soup.prettify()
+            self.login_sub(soup)
+            print "---End Login---"
+            # print soup.title.string
             # self.login()
         except Exception as e:
             print e
             print traceback.print_exc()
+
+    def login_sub(self, soup):
+        try:
+            print '\n\t---Begin OAuth---'
+            # print soup.prettify()
+            loc_href = soup.select('script')[0]
+            loc_href = re.findall('location.href = \'(.*?)\'', str(loc_href))[0]
+            response = self.get_url_data(loc_href)
+            # print BeautifulSoup(response).prettify().encode('utf-8')
+            print "\t---End OAuth---"
+        except IndexError:
+            print 'Login in Session'
 
     def get_courses(self):
         print "\n---Begin Fetching Courses---"

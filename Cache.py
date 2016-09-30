@@ -29,9 +29,10 @@ if __name__ == '__main__':
         jl = JaccountLogin(usr, pw, int(sys.argv[1]), int(sys.argv[2]), 70, True)
     # print urllib2.urlopen('https://sjtu-umich.instructure.com/', timeout=10).read()
     try:
-        xsoup, xres = jl.check_login()
-        if not xres:
-            jl.login(xsoup)
+        # xsoup, xres = jl.check_login()
+        # if not xres:
+        #     jl.login(xsoup)
+        jl.login()
         jl.cdb.name = 'xiaoliran12'
         jl.cdb.db_name = 'Canvas_xiaoliran12'
         jl.cdb.init_db()
@@ -43,5 +44,6 @@ if __name__ == '__main__':
     except Exception as e:
         traceback.print_exc()
     finally:
+        # pass
         os.system('pause')
 
