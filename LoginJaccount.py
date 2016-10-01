@@ -252,15 +252,16 @@ class JaccountLogin:
 
     def login_sub(self, soup):
         try:
-            print '\n\t---Begin OAuth---'
+            print '\t---Begin OAuth---'
             # print soup.prettify()
             loc_href = soup.select('script')[0]
-            loc_href = re.findall('location.href = \'(.*?)\'', str(loc_href))[0]
+            loc_href = re.findall('location.href = [\'\"](.*?)[\'\"]', str(loc_href))[0]
             response = self.get_url_data(loc_href)
             # print BeautifulSoup(response).prettify().encode('utf-8')
             print "\t---End OAuth---"
         except IndexError:
             print 'Login in Session'
+            print "\t---End OAuth---"
 
     def get_courses(self):
         print "\n---Begin Fetching Courses---"
