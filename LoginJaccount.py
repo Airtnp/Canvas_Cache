@@ -426,19 +426,22 @@ class JaccountLogin:
             self.make_dir(path_prefix)
             fid = str(fid)
             file_url = host_url + 'api/v1/folders/' + fid + '/files'
-            req = urllib2.Request(file_url)
+            suffix_url = '?include[]=user&include[]=usage_rights&include[]=enhanced_preview_url&include[]=context_asset_string&per_page=200&sort=&order='
+            req = urllib2.Request(file_url+suffix_url)
             response = self.opener.open(req, timeout=self.timeout)
             json_data = response.read()
-            json_data = re.findall(';\[(\{.*\})\]', json_data)
+            # json_data = re.findall(';\[(\{.*\})\]', json_data)
+            json_data = json_data.replace('while(1);', '')
             t_files = []
             file_properties = ['id', 'folder_id', 'display_name', 'filename', 'content-type', 'url', 'size',
                                'created_at', 'updated_at', 'unlock_at', 'modified_at']
             if json_data:
-                json_data = json_data[0]
-                files = re.findall('(\{.*?\})', json_data)
+                # json_data = json_data[0]
+                # files = re.findall('(\{.*?\})', json_data)
+                files = self.get_json(json_data)
                 for xfile in files:
                     r_file = {}
-                    file_data = self.get_json(xfile)
+                    file_data = xfile
                     for fp in file_properties:
                         if fp in file_data.keys():
                             r_file[fp] = file_data[fp]
@@ -459,7 +462,7 @@ class JaccountLogin:
                     db_list[10] = r_file['unlock_at']
                     db_list[11] = r_file['url']
                     db_list[12] = 'success'
-
+                    # print r_file['display_name']
                     t_files.append(r_file)
                     fl = {}
                     fl['url'] = r_file['url']
