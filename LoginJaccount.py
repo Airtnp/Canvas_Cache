@@ -25,6 +25,14 @@ host_url = 'https://sjtu-umich.instructure.com/'
 post_url = 'https://jaccount.sjtu.edu.cn/jaccount/ulogin'
 
 
+class EmptyPage:
+    def __init__(self):
+        self.content = 'while(1);[]'
+
+    def read(self):
+        return self.content
+
+
 class JaccountLogin:
     def __init__(self, usr, pw, timeout, dtimeout=10, threshold=140, captcha=False, host='localhost', host_user='root', host_pw=''):
         self.user = usr
@@ -127,10 +135,14 @@ class JaccountLogin:
             return self.get_file(params, depth-1)
         except DepthLimitExceeded:
             raise TimeLimitExpired()
+        except ValueError as e:
+            print e
+            print params['url']
+            raise DepthLimitExceeded()
         except Exception as e:
             print e
             print traceback.print_exc()
-            return False
+            raise DepthLimitExceeded()
 
     def get_login_soup(self):
         soup = None
@@ -281,19 +293,21 @@ class JaccountLogin:
             print e
             print traceback.print_exc()
 
-    def get_url_data(self, url):
+    def get_url_data(self, url, depth=4):
         try:
+            if depth == 0:
+                return EmptyPage()
             data = self.opener.open(url, timeout=self.timeout)
         except urllib2.URLError:
             print 'URL Timeout error'
-            data = self.get_url_data(url)
+            data = self.get_url_data(url, depth-1)
         except SSLError:
             print 'SSL handshake error'
-            data = self.get_url_data(url)
+            data = self.get_url_data(url, depth-1)
         except Exception as e:
             print e
             print traceback.print_exc()
-            data = None
+            data = EmptyPage()
         return data
 
     def get_course_assignments(self, c_title, c_url, print_sign=1):
@@ -358,6 +372,7 @@ class JaccountLogin:
                             else:
                                 fl['title'] = self.hw_path+'/'+c_title + '/' + ".".join(title[0:len(title)-1]) + '_' + str(ad['id']) + '.' + title[-1]
                             download_status = self.cdb.check_assignment(db_list)
+                            '''
                             if download_status != 'success' or self.refresh_files == 1:
                                 try:
                                     tt = TimeoutThread(self.dtimeout, self.get_file, fl)
@@ -376,6 +391,8 @@ class JaccountLogin:
                                         print fl['title']
                                         print 'Download fail!'
                                         db_list[7] = 'failed'
+                            '''
+                            print '\n\t\t'+ad['name']
                         self.cdb.op_assignment(db_list)
                         self.course_assign[c_title].append(ad)  
             print "\t-End Assignments for " + c_title + '-'
@@ -389,6 +406,8 @@ class JaccountLogin:
             print 'Unknown JSON Error'
             print response.read()
             # self.get_course_assignments(c_title, c_url)
+        except TimeLimitExpired:
+            print e    
         except Exception as e:
             print e
             print traceback.print_exc()
@@ -754,6 +773,7 @@ class JaccountLogin:
                 db_list[14] = a_anno['group_category_id']
                 self.cdb.op_information(db_list, 'announcements')
 
+                # print a_anno['url']
                 a_anno['reply'] = self.get_reply(base_url, a_anno['id'], base_title, a_anno['title'])
                 t_anno.append(a_anno)
                 if db_list[8] == 'unread':
