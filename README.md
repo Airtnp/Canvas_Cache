@@ -19,7 +19,7 @@ Cache slow Canvas
 ```python
 from LoginJaccount import JaccountLogin
 
-jl = JaccoutLogin()
+jl = JaccoutLogin(usr, pw, timeout, dtimeout=10, threshold=140, captcha=False, host='localhost', host_user='root', host_pw='')
 jl.login() # login in the jaccount
 jl.cdb.init_db() # initialize database
 jl.get_courses() # fetch courses
