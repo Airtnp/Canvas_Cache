@@ -15,7 +15,18 @@ Cache slow Canvas
 * Install tesseract-ocr (or you can manuelly input the captcha every time)
 * Install MySQL
 * Replace the username/password in Config.ini
-* `python Cache.py`
+* 
+```python
+from LoginJaccount import JaccountLogin
+
+jl = JaccoutLogin()
+jl.login() # login in the jaccount
+jl.cdb.init_db() # initialize database
+jl.get_courses() # fetch courses
+jl.get_infomation() # fetch announcement and replys for stored courses
+jl.get_assignment() # fetch assignment name for stored courses
+jl.get_attachments() # fetch files for stored courses
+```
 
 ## Problem
 * Canvas is so slow so URLError and SSLError will occur
@@ -36,3 +47,4 @@ Cache slow Canvas
 * orz JasonQSY
 * orz dbshch
 * orz tc-imba
+* orz Evan-Zhao
