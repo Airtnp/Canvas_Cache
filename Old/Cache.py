@@ -33,8 +33,8 @@ if __name__ == '__main__':
         # if not xres:
         #     jl.login(xsoup)
         jl.login()
-        jl.cdb.name = 'xiaoliran12'
-        jl.cdb.db_name = 'Canvas_xiaoliran12'
+        jl.cdb.name = usr
+        jl.cdb.db_name = 'Canvas_' + usr
         jl.cdb.init_db()
         jl.get_courses()
         jl.get_information()
