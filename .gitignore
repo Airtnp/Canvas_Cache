@@ -1,0 +1,7 @@
+# python
+__pycache__/
+*.egg
+*.egg-info/
+
+# OS specific
+.DS_STORE
