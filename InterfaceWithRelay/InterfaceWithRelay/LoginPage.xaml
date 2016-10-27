@@ -1,0 +1,36 @@
+﻿<Page x:Class="InterfaceWithRelay.LoginPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:InterfaceWithRelay"
+      xmlns:control="clr-namespace:InterfaceWithRelay.Control"
+      mc:Ignorable="d" 
+      d:DesignHeight="525" d:DesignWidth="350"
+      Title="LoginPage">
+
+    <Grid x:Name="grid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="5*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*"/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition Height="3*"/>
+        </Grid.RowDefinitions>
+        <Label x:Name="userNameLabel" Content="User:" Margin="0,0,10,0" Height="26" VerticalAlignment="Center" Grid.Row="1" HorizontalContentAlignment="Right"/>
+        <TextBox x:Name="userNameTextBox" Height="26" TextWrapping="WrapWithOverflow" Text="{Binding LoginName}" VerticalAlignment="Center" Margin="9.8,22.6,20.2,22.6" VerticalContentAlignment="Center" Grid.Row="1" Grid.Column="1"/>
+        <Label x:Name="passwordLabel" Content="Password:" Margin="0,0,10,0" Height="26" VerticalAlignment="Center" Grid.Row="2" HorizontalContentAlignment="Right"/>
+        <PasswordBox x:Name="passwordBox" Grid.Column="1" Margin="10,0,20,0" Grid.Row="2" VerticalAlignment="Center" Height="26" PasswordChanged="passwordBox_LostFocus"/>
+        <Button x:Name="button" Content="Login" HorizontalAlignment="Center" Height="26" VerticalAlignment="Top" Width="91"
+                Command="{Binding LoginButtonCommand}" CommandTarget="{Binding .}" Grid.Column="1" Margin="13.2,32.8,142.2,0" Grid.Row="3" />
+        <control:MetroProgressbar x:Name="progressBar" Grid.Row="3" Grid.ColumnSpan="2" Foreground="Blue" Visibility="Hidden" />
+        <Ellipse HorizontalAlignment="Center" Height="100" VerticalAlignment="Center" Width="100" Margin="3,10,0,0" Grid.ColumnSpan="2">
+            <Ellipse.Fill>
+                <ImageBrush ImageSource="pack://siteoforigin:,,,/bigicon (19).png"/>
+            </Ellipse.Fill>
+        </Ellipse>
+    </Grid>
+</Page>
