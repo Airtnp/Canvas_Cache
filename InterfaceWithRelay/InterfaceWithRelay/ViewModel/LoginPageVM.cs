@@ -1,9 +1,12 @@
-﻿using System;
+﻿using InterfaceWithRelay.Model;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace InterfaceWithRelay.ViewModel
 {
-    class LoginWindowVM : NotifyPropertyChanged
+    class LoginPageVM : NotifyPropertyChanged, IViewModel
     {
         #region MVVM model communication
 
@@ -11,42 +14,48 @@ namespace InterfaceWithRelay.ViewModel
         /// Reference to the views. 
         /// Do not use it anywhere before the initialization of windows.
         /// </summary>
+
+        internal Window loginWindow;
         internal LoginPage loginPage;
 
-        /*private Model model*/
+        private IdentityInfo identityModel = new IdentityInfo();
 
         #endregion
 
         #region Properties
 
-        private string loginName = "";
         public string LoginName
         {
-            get { return loginName; }
-            set { base.SetProperty(ref loginName, value); }
+            get { return identityModel.CurrentUser.Name; }
+            set { base.SetProperty(ref identityModel.CurrentUser.Name, value); }
         }
 
-        private string loginPassword = "";
         public string LoginPassword
         {
-            get { return loginPassword; }
-            set { base.SetProperty(ref loginPassword, value); }
+            get { return identityModel.CurrentUser.Password; }
+            set { base.SetProperty(ref identityModel.CurrentUser.Password, value); }
         }
 
-        private bool isLoggedIn = false;
         public bool IsLoggedIn
         {
-            get { return isLoggedIn; }
-            set { base.SetProperty(ref isLoggedIn, value); }
+            get { return identityModel.CurrentUserLoggedIn; }
+            set { base.SetProperty(ref identityModel.CurrentUserLoggedIn, value); }
+        }
+
+        public List<User> UserList
+        {
+            get { return identityModel.UserList; }
+            private set { identityModel.UserList = value; }
         }
 
         #endregion
 
         #region Constructor
 
-        public LoginWindowVM(LoginPage page)
+        public LoginPageVM(Window window)
         {
-            loginPage = page;
+            loginWindow = window;
+            loginPage = window.Content as LoginPage;
 
             LoginButtonCommand = new RelayCommand(loginButton_Execute, loginButton_CanExecute);
         }
@@ -63,7 +72,7 @@ namespace InterfaceWithRelay.ViewModel
             await Task.Run(() =>
             {
                 /// Fix this!
-                System.Threading.Thread.Sleep(10000);
+                System.Threading.Thread.Sleep(3000);
 
                 IsLoggedIn = tryLoginFromVM();
 #if DEBUG
@@ -92,7 +101,10 @@ namespace InterfaceWithRelay.ViewModel
 
         private void switchWindow()
         {
-            
+            AppWindow appWindow = new AppWindow();
+            (appWindow.DataContext as AppWindowVM).identityModel = identityModel;
+            appWindow.Show();
+            loginWindow.Close();
         }
     }
 }

@@ -21,11 +21,12 @@
             <RowDefinition Height="3*"/>
         </Grid.RowDefinitions>
         <Label x:Name="userNameLabel" Content="User:" Margin="0,0,10,0" Height="26" VerticalAlignment="Center" Grid.Row="1" HorizontalContentAlignment="Right"/>
-        <TextBox x:Name="userNameTextBox" Height="26" TextWrapping="WrapWithOverflow" Text="{Binding LoginName}" VerticalAlignment="Center" Margin="9.8,22.6,20.2,22.6" VerticalContentAlignment="Center" Grid.Row="1" Grid.Column="1"/>
+        <ComboBox x:Name="userNameTextBox" Height="26" Text="{Binding LoginName}" VerticalAlignment="Center" Margin="9.8,22.6,20.2,22.6" VerticalContentAlignment="Center" Grid.Row="1" Grid.Column="1" IsEditable="True"
+                  ItemsSource="{Binding UserList}"/>
         <Label x:Name="passwordLabel" Content="Password:" Margin="0,0,10,0" Height="26" VerticalAlignment="Center" Grid.Row="2" HorizontalContentAlignment="Right"/>
         <PasswordBox x:Name="passwordBox" Grid.Column="1" Margin="10,0,20,0" Grid.Row="2" VerticalAlignment="Center" Height="26" PasswordChanged="passwordBox_LostFocus"/>
         <Button x:Name="button" Content="Login" HorizontalAlignment="Center" Height="26" VerticalAlignment="Top" Width="91"
-                Command="{Binding LoginButtonCommand}" CommandTarget="{Binding .}" Grid.Column="1" Margin="13.2,32.8,142.2,0" Grid.Row="3" />
+                Command="{Binding LoginButtonCommand}" CommandTarget="{Binding .}" Margin="0,32.8,0,0" Grid.Row="3" Grid.ColumnSpan="2" />
         <control:MetroProgressbar x:Name="progressBar" Grid.Row="3" Grid.ColumnSpan="2" Foreground="Blue" Visibility="Hidden" />
         <Ellipse HorizontalAlignment="Center" Height="100" VerticalAlignment="Center" Width="100" Margin="3,10,0,0" Grid.ColumnSpan="2">
             <Ellipse.Fill>

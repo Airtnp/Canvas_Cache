@@ -24,13 +24,12 @@ namespace InterfaceWithRelay
         public LoginPage()
         {
             InitializeComponent();
-            this.DataContext = new LoginWindowVM(this);
         }
 
         private void passwordBox_LostFocus(object sender, RoutedEventArgs e)
         {
             // This was done in order to ensure the security of password.
-            (DataContext as LoginWindowVM).LoginPassword = passwordBox.Password;
+            (DataContext as LoginPageVM).LoginPassword = passwordBox.Password;
         }
     }
 }
