@@ -9,32 +9,7 @@
         xmlns:Controls="http://metro.mahapps.com/winfx/xaml/controls"
         mc:Ignorable="d"
         Title="" Height="525" Width="350" WindowStartupLocation="CenterScreen" WindowStyle="None" ShowTitleBar="False" ShowMaxRestoreButton="False">
-
-    <Window.Style>
-        <Style>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsLoggedIn}" Value="True">
-                    <DataTrigger.EnterActions>
-                        <BeginStoryboard>
-                            <Storyboard BeginTime="0" Duration="Forever">
-                                <DoubleAnimation Storyboard.TargetProperty="(Window.Width)" From="540" To="840" BeginTime="0:0:0" Duration="0:0:1"/>
-                                <DoubleAnimation Storyboard.TargetProperty="(Window.Left)" From="150" To="0" BeginTime="0:0:0" Duration="0:0:1"/>
-                            </Storyboard>
-                        </BeginStoryboard>
-                    </DataTrigger.EnterActions>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-    </Window.Style>
-
-    <Window.Resources>
-        <Style x:Key="textBoxStyle">
-
-        </Style>
-    </Window.Resources>
-
     <Window.Content>
         <local:LoginPage/>
     </Window.Content>
-
 </Controls:MetroWindow>

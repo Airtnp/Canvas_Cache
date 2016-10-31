@@ -34,4 +34,8 @@
             </Ellipse.Fill>
         </Ellipse>
     </Grid>
+
+    <Page.InputBindings>
+        <KeyBinding Key="Return" Command="{Binding LoginButtonCommand}"/>
+    </Page.InputBindings>
 </Page>

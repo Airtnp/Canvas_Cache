@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,8 +12,14 @@ namespace InterfaceWithRelay.Model
     {
         public string CourseName { get; set; }
         public string FolderPath { get; set; }
-        public List<FileInfo> fileList = new List<FileInfo>();
 
+        private ObservableCollection<CanvasFileInfo> fileList = new ObservableCollection<CanvasFileInfo>();
+        public ObservableCollection<CanvasFileInfo> FileList
+        {
+            get { return fileList; }
+            private set { fileList = value; }
+        }
+        
         public void UpdateLocalFileList()
         {
 

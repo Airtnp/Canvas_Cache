@@ -30,9 +30,9 @@ namespace InterfaceWithRelay.Model
             UserDataBaseLoc = dataLocation;
         }
 
-        public async void SyncListWithLocal(List<User> userList)
+        /*public async void SyncListWithLocal(List<User> userList)
         {
 
-        }
+        }*/
     }
 }

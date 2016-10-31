@@ -3,16 +3,61 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:InterfaceWithRelay"
+        xmlns:local="clr-namespace:InterfaceWithRelay.ViewModel"
         xmlns:Controls="http://metro.mahapps.com/winfx/xaml/controls"
+        xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
         mc:Ignorable="d"
-        Title="CanvasFast" Height="540" Width="960" Icon="pack://siteoforigin:,,,/bigicon (19).png" WindowStartupLocation="CenterScreen">
+        Title="CanvasFast" Height="540" Width="960" 
+        Icon="pack://siteoforigin:,,,/bigicon (19).png" 
+        WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Resources/Icons.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <CollectionViewSource x:Key="FileListSource" Source="{Binding SelectedCourse.FileList}" >
+                <CollectionViewSource.GroupDescriptions>
+                    <PropertyGroupDescription PropertyName="Name"/>
+                </CollectionViewSource.GroupDescriptions>
+                <CollectionViewSource.SortDescriptions>
+                    <scm:SortDescription PropertyName="Name"/>
+                </CollectionViewSource.SortDescriptions>
+            </CollectionViewSource>
+            
+            <Style x:Key="DataGridGroupStyle" TargetType="{x:Type GroupItem}">
+                <Setter Property="Margin" Value="0,0,0,5"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type GroupItem}">
+                            <Expander IsExpanded="True" Background="#FF1976D2" BorderBrush="#FF1976D2" Foreground="#FFEEEEEE" BorderThickness="5,0,0,0">
+                                <Expander.Header>
+                                    <DockPanel>
+                                        <TextBlock FontWeight="Bold" Text="{Binding Name}" Margin="5,0,0,0"/>
+                                    </DockPanel>
+                                </Expander.Header>
+                                <ItemsPresenter />
+                            </Expander>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="DataGridRowStyle" TargetType="{x:Type DataGridRow}">
+                <Setter Property="Foreground" Value="Black" />
+                <Setter Property="Background" Value="White" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#FF81D4FA"/>
+                        <Setter Property="Foreground" Value="White"/>
+                    </Trigger>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="#FF03A9F4"/>
+                        <Setter Property="Foreground" Value="White"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
         </ResourceDictionary>
     </Window.Resources>
 
@@ -24,7 +69,8 @@
                    Height="20"
                    Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
                         <Rectangle.OpacityMask>
-                            <VisualBrush Stretch="Fill" Visual="{Binding Mode=OneWay, Source={StaticResource appbar_settings}}" />
+                            <VisualBrush Stretch="Fill" Visual="{Binding Mode=OneWay, 
+                                Source={StaticResource appbar_settings}}" />
                         </Rectangle.OpacityMask>
                     </Rectangle>
                     <TextBlock Margin="4 0 0 0"
@@ -40,9 +86,25 @@
             <ColumnDefinition Width="1*"/>
             <ColumnDefinition Width="5*"/>
         </Grid.ColumnDefinitions>
-        <ListBox x:Name="listBox" Height="513" Margin="0,0,0.2,-0.2" ItemsSource="{Binding CourseList}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
-        <GridSplitter x:Name="gridSplitter" Margin="0,0,0,-0.2" Width="2" ResizeDirection="Columns" ResizeBehavior="CurrentAndNext"/>
-        <DataGrid x:Name="dataGrid" Grid.Column="1" Margin="0"/>
 
+        <ListBox x:Name="listBox" Height="513" Margin="0,0,0.2,-0.2" ItemsSource="{Binding CourseList}" 
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" DisplayMemberPath="CourseName"
+                 SelectedIndex="{Binding SelectedCourseIdx}"/>
+        <GridSplitter x:Name="gridSplitter" Margin="0,0,0,-0.2" Width="2" ResizeDirection="Columns" ResizeBehavior="CurrentAndNext"/>
+        <DataGrid x:Name="fileDataGrid" Grid.Column="1" Margin="0" ItemsSource="{Binding Source={StaticResource FileListSource}, Mode=OneWay}" 
+                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" RowStyle="{DynamicResource DataGridRowStyle}">
+            <DataGrid.Resources>
+                <local:LocationConverter x:Key="LocationConverter"/>
+            </DataGrid.Resources>
+            <DataGrid.Columns>
+                <!--DataGridTextColumn Header="Name" Binding="{Binding Path=Name}"/-->
+                <DataGridTextColumn Header="Location" Binding="{Binding Path=IsLocal, Converter={StaticResource LocationConverter}}"/>
+                <DataGridTextColumn Header="Accessed Time" Binding="{Binding Path=LastAccessTime}"/>
+            </DataGrid.Columns>
+
+            <DataGrid.GroupStyle>
+                <GroupStyle ContainerStyle="{StaticResource DataGridGroupStyle}"/>
+            </DataGrid.GroupStyle>
+        </DataGrid>
     </Grid>
 </Controls:MetroWindow>

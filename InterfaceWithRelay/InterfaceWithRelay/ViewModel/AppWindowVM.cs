@@ -1,10 +1,12 @@
 ﻿using InterfaceWithRelay.Model;
+using System;
 using System.Collections.ObjectModel;
-using System.Windows;
+using System.ComponentModel;
+using System.Windows.Data;
 
 namespace InterfaceWithRelay.ViewModel
 {
-    public class AppWindowVM: NotifyPropertyChanged, IViewModel
+    public partial class AppWindowVM: NotifyPropertyChanged, IViewModel
     {
         #region MVVM model communication
 
@@ -13,7 +15,8 @@ namespace InterfaceWithRelay.ViewModel
         /// Do not use it anywhere before the initialization of windows.
         /// </summary>
 
-        internal Window appWindow;
+        internal AppWindow appWindow;
+        internal ICollectionView fileDataGridHelper;
 
         internal IdentityInfo identityModel = new IdentityInfo();
         internal DataGridModel dataGridModel = new DataGridModel();
@@ -41,15 +44,34 @@ namespace InterfaceWithRelay.ViewModel
             set { dataGridModel.courseList = value; }
         }
 
+        public CourseFolderInfo SelectedCourse
+        {
+            get { return CourseList[selectedCourseIdx]; }
+        }
+
+        private int selectedCourseIdx;
+        public int SelectedCourseIdx
+        {
+            get { return selectedCourseIdx; }
+            set {
+                base.SetProperty(ref selectedCourseIdx, value);
+                base.OnPropertyChanged("SelectedCourse");
+            }
+        }
+
         #endregion
 
         #region Constructor
 
-        public AppWindowVM(Window window)
+        public AppWindowVM(AppWindow window)
         {
             appWindow = window;
-
+            fileDataGridHelper = CollectionViewSource.GetDefaultView(window.fileDataGrid.ItemsSource);
             SettingsButtonCommand = new RelayCommand(settingsButton_Execute);
+
+#if DEBUG
+            dataGridModel = FileLocalDummyReader.ReadModel(@"D:\SJTU\Sophomore S1");
+#endif
         }
 
         #endregion
@@ -70,4 +92,31 @@ namespace InterfaceWithRelay.ViewModel
 
         #endregion
     }
+
+    #region value converter
+
+    [ValueConversion(typeof(bool), typeof(string))]
+    public class LocationConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            bool local = (bool)value;
+            if (local)
+                return "Local";
+            else
+                return "Canvas";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            string strPos = (string)value;
+            if (strPos == "Local")
+                return true;
+            else if (strPos == "Canvas")
+                return false;
+            else throw new ArgumentException("Inputed file location not 'Local' or 'Canvas'.");
+        }
+    }
+
+    #endregion
 }

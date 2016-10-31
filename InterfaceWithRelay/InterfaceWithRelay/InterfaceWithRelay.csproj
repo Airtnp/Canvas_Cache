@@ -67,12 +67,13 @@
     <Compile Include="AppWindow.xaml.cs">
       <DependentUpon>AppWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Model\FileLocalDummyReader.cs" />
     <Compile Include="LoginPage.xaml.cs">
       <DependentUpon>LoginPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="Model\CourseFolderInfo.cs" />
     <Compile Include="Model\DataGridModel.cs" />
-    <Compile Include="Model\FileInfo.cs" />
+    <Compile Include="Model\CanvasFileInfo.cs" />
     <Compile Include="Model\IdentityInfo.cs" />
     <Compile Include="Model\IModel.cs" />
     <Compile Include="Model\SettingsModel.cs" />
@@ -163,6 +164,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\Entypo-license.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Obsoleted\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

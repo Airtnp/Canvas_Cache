@@ -4,16 +4,16 @@
 winexe
 C#
 .cs
-D:\SJTU\Project\Interface\InterfaceWithRelay - 副本\InterfaceWithRelay\obj\Debug\
+D:\SJTU\Project\Interface\InterfaceWithRelayv3\InterfaceWithRelay\obj\Debug\
 InterfaceWithRelay
 none
 false
 DEBUG;TRACE
-D:\SJTU\Project\Interface\InterfaceWithRelay - 副本\InterfaceWithRelay\App.xaml
+D:\SJTU\Project\Interface\InterfaceWithRelayv3\InterfaceWithRelay\App.xaml
 71784416279
 
-21828710859
-16-468363270
+221606253248
+16-1252147030
 AppWindow.xaml;LoginPage.xaml;LoginWindow.xaml;Resources\Icons.xaml;Resources\IconsNonShared.xaml;SettingsWindow.xaml;UserControl\MetroProgressBar.xaml;
 
 False

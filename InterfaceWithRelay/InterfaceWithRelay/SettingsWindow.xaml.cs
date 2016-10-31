@@ -1,4 +1,5 @@
 ﻿using InterfaceWithRelay.ViewModel;
+using MahApps.Metro.Controls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace InterfaceWithRelay
     /// <summary>
     /// SettingsWindow.xaml 的交互逻辑
     /// </summary>
-    public partial class SettingsWindow : Window
+    public partial class SettingsWindow : MetroWindow
     {
         public SettingsWindow(AppWindowVM appVM)
         {
