@@ -347,7 +347,6 @@ class CanvasCache:
                 # self.get_folder_file(files_root['id'], self.fl_path + '/' + self.course_title[i], fc)
                 self.get_folder(files_root['id'], self.fl_path + '/' + self.course_title[i])
                 print "\t-End Files for " + self.course_title[i] + '-'
-                break
             print "---End Fetching Files---"
         except urllib2.URLError:
             print 'URL Timeout error'
