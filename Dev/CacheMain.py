@@ -5,9 +5,9 @@ import urllib2
 import traceback
 import os
 import cookielib
-import re
 import json
-from bs4 import BeautifulSoup
+import socket
+from math import floor
 from ssl import SSLError
 
 
@@ -33,10 +33,8 @@ class CanvasConfigParser:
         cp.read(file_path)
 
         self.token = cp.get('user_info', 'token')
-        self.db_host = cp.get('database', 'db_host')
-        self.db_usr = cp.get('database', 'db_usr')
-        self.db_pw = cp.get('database', 'db_pw')
-        self.db_port = cp.get('database', 'db_port')
+        self.timeout = cp.get('timeout', 'url_timeout')
+        self.dtimeout = cp.get('timeout', 'download_timeout')
 
 
 class CanvasCache:
@@ -44,24 +42,15 @@ class CanvasCache:
         Main class for caching infomation on Canvas
     """
 
-    def __init__(self, token, timeout, db_host, db_usr, db_pw, db_port):
+    def __init__(self, ccp):
         """
 
-        :param token: canvas token
-        :type token: string
-        :param timeout: timeout for waiting for response
-        :type timeout: integer
-        :param db_host: database host
-        :type db_host: string
-        :param db_usr: database user
-        :type db_usr: string
-        :param db_pw: database password
-        :type db_pw: string
-        :param db_port: database port
-        :type db_port: integer
+        :param ccp: CanvasConfigParser
+        :type ccp: CanvasConfigParser
         """
-        self.token = token
-        self.timeout = timeout
+        self.token = ccp.token
+        self.timeout = int(ccp.timeout)
+        self.dtimeout = int(ccp.dtimeout)
         self.usr_id = None
 
         self.host_url = 'https://sjtu-umich.instructure.com/'
@@ -111,16 +100,87 @@ class CanvasCache:
             data = None
         return data
 
-    def download_from_url(self, url, filename):
+    def download_from_url(self, url, filepath):
         """
 
         :param url: file url
         :type url: string
         :param filename: file name with folder path
         :type filename: string
+        :return file integrity
+        :rtype boolean
         """
+        size = 0L
+
+        def get_remote_file_info(url, proxy=None):
+
+            """
+            From http://blog.csdn.net/jobschen/article/details/47107691
+            Get remote file information
+            :param url: url
+            :type url: string
+            :param proxy: proxy setting
+            :type proxy: dict
+            :return: headers
+            :rtype: dict
+            """
+            opener = self.opener
+            if proxy:
+                if url.lower().startswith('https://'):
+                    opener.add_handler(urllib2.ProxyHandler({'https' : proxy}))
+                else:
+                    opener.add_handler(urllib2.ProxyHandler({'http' : proxy}))
+            try:
+                request = urllib2.Request(url)
+                request.get_method = lambda: 'HEAD'
+                response = opener.open(request, timeout=self.timeout)
+                response.read()
+            except Exception as e: # 远程文件不存在
+                return 0
+            else:
+                return dict(response.headers)
+
+        def report_hook(b_n, b_s, s):
+            """
+            get file downloading report
+            :param b_n: block number
+            :type b_n: integer
+            :param b_s: block size
+            :type b_s: integer
+            :param s: total size
+            :type s: integer
+            """
+            size = s
+            per = min(100.0, 100.0 * b_n * b_s / s)
+
+            print '\t\t|' + int(floor(per/2.5))*'*' + int(40-floor(per/2.5))*'-' + '|' + '%.2f%%' % per
+
+        def check_integrity(filepath):
+            """
+            check if the file is fully downloaded.
+            :param filepath: file path
+            :type filepath: string
+            :return: integrity
+            :rtype: boolean
+            """
+            if os.path.exists(filepath):
+                return os.path.getsize(filepath) == size
+            else:
+                return False
+
+        print '\t\turl: ' + url
+        print '\t\tfilename: ' + filepath
         url = url + '&access_token=' + self.token
-        urllib.urlretrieve(url, filename)
+        try:
+            socket.setdefaulttimeout(self.dtimeout)
+            size = long(get_remote_file_info(url)['content-length'])
+            urllib.urlretrieve(url, filepath, report_hook)
+        except Exception as e:
+            print '\t\tError: ' + str(e)
+        finally:
+            print '\t\tIntegrity: ' + str(check_integrity(filepath))
+            return check_integrity(filepath)
+
 
     @staticmethod
     def get_json_data(data):
@@ -131,7 +191,10 @@ class CanvasCache:
         :return: data as json
         :rtype: dict
         """
-        data = json.loads(data)
+        if data:
+            data = json.loads(data)
+        else:
+            data = {}
         return data
 
     def get_user_id(self):
@@ -163,14 +226,19 @@ class CanvasCache:
             print e
             print traceback.print_exc()
 
-    def get_folder_file(self, fid, path_prefix):
+    def get_folder_file(self, fid, path_prefix, file_record):
         """
 
         :param fid: file id
-        :type fid: integer
+        :type fid: integer | string
         :param path_prefix: relative path of file
         :type path_prefix: string
+        :param file_record: dict of files
+        :type file_record: dict
         """
+
+        fc = file_record
+
         try:
             self.make_dir(path_prefix)
             fid = str(fid)
@@ -179,14 +247,24 @@ class CanvasCache:
             files = self.get_json_data(file_data)
             for xfile in files:
                 fl = {}
+                fl['id'] = xfile['id']
                 fl['url'] = xfile['url']
+                fl['locked'] = xfile['locked']
+                fl['updated_at'] = xfile['updated_at']
                 title = xfile['display_name'].split(".")
                 if len(title) == 1:
                     fl['title'] = path_prefix + '/' + title[0] + '_' + str(xfile['id'])
                 else:
                     fl['title'] = path_prefix + '/' + ".".join(title[0:len(title) - 1]) + '_' + str(
                             xfile['id']) + '.' + title[-1]
-                self.download_from_url(fl['url'], fl['title'])
+                if not fl['locked'] and not (str(fl['id']) in fc.keys()):
+                    intg = self.download_from_url(fl['url'], fl['title'])
+                    if intg:
+                        fl['download_status'] = True
+                    else:
+                        fl['download_status'] = False
+                    fc[fl['id']] = fl
+
         except urllib2.URLError:
             print 'URL Timeout error'
         except SSLError:
@@ -199,17 +277,46 @@ class CanvasCache:
         """
 
         :param fid: folder id
-        :type fid:  integer
+        :type fid:  integer | string
         :param path_prefix: the relative path of the folder
         :type path_prefix: string
         """
+
+        def get_file_record():
+            """
+            Get current record in this dir
+            :return: file record dict
+            :rtype: dict
+            """
+            if not os.path.exists(path_prefix + '/' + 'file_record'):
+                f = open(path_prefix + '/' + 'file_record', 'w+')
+                f.close()
+                # os.system('attrib +H ' + os.getcwd() + '/' + path_prefix + '/' + 'file_record') # TODO: chmod in *nix
+                return {}
+            else:
+                f = open(path_prefix + '/' + 'file_record', 'rt')
+                return self.get_json_data(f.read())
+
+        def update_file_record(file_dict):
+            """
+            update file dict
+            :param file_dict: file dict
+            :type file_dict: dict
+            """
+            f = open(path_prefix + '/' + 'file_record', 'wt')
+            f.write(json.dumps(file_dict))
+
+        self.make_dir(path_prefix)
+        fc = get_file_record() or {}
+
         try:
             fid = str(fid)
+            self.get_folder_file(fid, path_prefix, fc)
+
             folder_api_url = 'api/v1/folders/' + fid + '/folders'
             folder_data = self.get_url_data(folder_api_url)
             folder_data = self.get_json_data(folder_data)
             for xfolder in folder_data:
-                self.get_folder_file(fid, path_prefix)
                 print('\n\t\tFolder-' + path_prefix + "/" + xfolder['name'])
                 self.get_folder(xfolder['id'], path_prefix + '/' + xfolder['name'])
         except urllib2.URLError:
@@ -219,6 +326,8 @@ class CanvasCache:
         except Exception as e:
             print e
             print traceback.print_exc()
+        finally:
+            update_file_record(fc)
 
     def get_all_file(self):
         """
@@ -235,9 +344,10 @@ class CanvasCache:
                 files_root_url = 'api/v1' + self.course_url[i] + '/folders/root'
                 files_root_data = self.get_url_data(files_root_url)
                 files_root = self.get_json_data(files_root_data)
-                self.get_folder_file(files_root['id'], self.fl_path + '/' + self.course_title[i])
+                # self.get_folder_file(files_root['id'], self.fl_path + '/' + self.course_title[i], fc)
                 self.get_folder(files_root['id'], self.fl_path + '/' + self.course_title[i])
                 print "\t-End Files for " + self.course_title[i] + '-'
+                break
             print "---End Fetching Files---"
         except urllib2.URLError:
             print 'URL Timeout error'
@@ -247,8 +357,7 @@ class CanvasCache:
             print e
             print traceback.print_exc()
 
-
 if __name__ == '__main__':
     ccp = CanvasConfigParser('Config.ini')
-    cc = CanvasCache(ccp.token, 5, ccp.db_host, ccp.db_usr, ccp.db_pw, ccp.db_port)
+    cc = CanvasCache(ccp)
     cc.get_all_file()
